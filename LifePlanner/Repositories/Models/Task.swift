@@ -39,6 +39,8 @@ extension DBModel {
         var createdAt: Date = Date()
         var updatedAt: Date = Date()
 
+        var goals: [DBModel.Goal]? = []
+
         init(
             id: UUID = UUID(),
             title: String = "",

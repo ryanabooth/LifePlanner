@@ -21,12 +21,14 @@ extension DIContainer {
         let userPermissions: UserPermissionsInteractor
         let tasks: TasksInteractor
         let habits: HabitsInteractor
+        let goals: GoalsInteractor
 
         static var stub: Self {
             .init(
                 userPermissions: StubUserPermissionsInteractor(),
                 tasks: StubTasksInteractor(),
-                habits: StubHabitsInteractor()
+                habits: StubHabitsInteractor(),
+                goals: StubGoalsInteractor()
             )
         }
     }

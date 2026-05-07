@@ -28,6 +28,8 @@ extension DBModel {
         @Relationship(deleteRule: .cascade, inverse: \DBModel.HabitLogEntry.habit)
         var entries: [DBModel.HabitLogEntry]? = []
 
+        var goals: [DBModel.Goal]? = []
+
         init(
             id: UUID = UUID(),
             title: String = "",

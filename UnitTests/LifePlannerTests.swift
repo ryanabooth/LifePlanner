@@ -83,6 +83,44 @@ final class LifePlannerTests: XCTestCase {
     }
 
     @MainActor
+    func test_goalsInteractor_linkUnlink() throws {
+        let container = try ModelContainer(
+            for: DBModel.Goal.self, DBModel.Task.self, DBModel.Habit.self, DBModel.HabitLogEntry.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let goals = RealGoalsInteractor()
+        let tasks = RealTasksInteractor()
+        let habits = RealHabitsInteractor()
+
+        goals.add(GoalDraft(title: "Read 24 books"), in: context)
+        tasks.add(TaskDraft(title: "Buy book A"), in: context)
+        tasks.add(TaskDraft(title: "Buy book B"), in: context)
+        habits.add(HabitDraft(title: "Read 10 pages"), in: context)
+        try context.save()
+
+        let goal = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Goal>()).first)
+        let allTasks = try context.fetch(FetchDescriptor<DBModel.Task>())
+        let allHabits = try context.fetch(FetchDescriptor<DBModel.Habit>())
+        XCTAssertEqual(allTasks.count, 2)
+
+        goals.setLinks(goal, tasks: allTasks, habits: allHabits, in: context)
+        try context.save()
+
+        XCTAssertEqual((goal.linkedTasks ?? []).count, 2)
+        XCTAssertEqual((goal.linkedHabits ?? []).count, 1)
+        // Inverse populated.
+        XCTAssertTrue((allTasks[0].goals ?? []).contains { $0.id == goal.id })
+        XCTAssertTrue((allHabits[0].goals ?? []).contains { $0.id == goal.id })
+
+        // Drop one task and the habit.
+        goals.setLinks(goal, tasks: [allTasks[0]], habits: [], in: context)
+        try context.save()
+        XCTAssertEqual((goal.linkedTasks ?? []).count, 1)
+        XCTAssertEqual((goal.linkedHabits ?? []).count, 0)
+    }
+
+    @MainActor
     func test_habitsInteractor_archiveAndDelete() throws {
         let container = try ModelContainer(
             for: DBModel.Habit.self, DBModel.HabitLogEntry.self,
