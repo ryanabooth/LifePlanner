@@ -121,6 +121,64 @@ final class LifePlannerTests: XCTestCase {
     }
 
     @MainActor
+    func test_contactsInteractor_upsertEnrichment() throws {
+        let container = try ModelContainer(
+            for: DBModel.Contact.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let interactor = RealContactsInteractor()
+
+        let first = interactor.upsertEnrichment(
+            systemID: "sys-123",
+            displayName: "Ada Lovelace",
+            draft: ContactEnrichmentDraft(notes: "Mathematician.", tags: ["math", "history"]),
+            in: context
+        )
+        try context.save()
+
+        XCTAssertEqual(first.notes, "Mathematician.")
+        XCTAssertEqual(first.tags, ["math", "history"])
+        XCTAssertEqual(try context.fetch(FetchDescriptor<DBModel.Contact>()).count, 1)
+
+        let second = interactor.upsertEnrichment(
+            systemID: "sys-123",
+            displayName: "Ada Lovelace",
+            draft: ContactEnrichmentDraft(notes: "First programmer.", tags: ["math"]),
+            in: context
+        )
+        try context.save()
+        XCTAssertEqual(second.id, first.id, "Should reuse the existing enrichment row")
+        XCTAssertEqual(second.notes, "First programmer.")
+        XCTAssertEqual(second.tags, ["math"])
+        XCTAssertEqual(try context.fetch(FetchDescriptor<DBModel.Contact>()).count, 1)
+
+        interactor.recordInteraction(systemID: "sys-123", displayName: "Ada Lovelace", at: Date(), in: context)
+        XCTAssertNotNil(second.lastInteraction)
+
+        interactor.deleteEnrichment(second, in: context)
+        try context.save()
+        XCTAssertTrue(try context.fetch(FetchDescriptor<DBModel.Contact>()).isEmpty)
+    }
+
+    @MainActor
+    func test_contactsInteractor_recordInteractionCreatesRowWhenAbsent() throws {
+        let container = try ModelContainer(
+            for: DBModel.Contact.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let interactor = RealContactsInteractor()
+
+        interactor.recordInteraction(systemID: "abc", displayName: "Grace Hopper", at: Date(), in: context)
+        try context.save()
+        let rows = try context.fetch(FetchDescriptor<DBModel.Contact>())
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows.first?.displayNameCache, "Grace Hopper")
+        XCTAssertNotNil(rows.first?.lastInteraction)
+    }
+
+    @MainActor
     func test_habitsInteractor_archiveAndDelete() throws {
         let container = try ModelContainer(
             for: DBModel.Habit.self, DBModel.HabitLogEntry.self,
