@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xcrun simctl list *)",
+      "Bash(xcodebuild * -showdestinations *)",
+      "Bash(xcodebuild * -list *)",
+      "Bash(git commit *)",
+      "Bash(git add *)"
+    ]
+  }
+}
