@@ -19,7 +19,15 @@ protocol HabitsInteractor {
 final class RealHabitsInteractor: HabitsInteractor {
 
     private let calendar: Calendar
-    init(calendar: Calendar = .current) { self.calendar = calendar }
+    private let scheduler: NotificationScheduler
+
+    init(
+        calendar: Calendar = .current,
+        scheduler: NotificationScheduler = RealNotificationScheduler()
+    ) {
+        self.calendar = calendar
+        self.scheduler = scheduler
+    }
 
     func add(_ draft: HabitDraft, in context: ModelContext) {
         let title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -31,6 +39,7 @@ final class RealHabitsInteractor: HabitsInteractor {
             reminderTime: draft.reminderTime
         )
         context.insert(habit)
+        syncReminder(for: habit)
     }
 
     func update(_ habit: DBModel.Habit, with draft: HabitDraft, in context: ModelContext) {
@@ -41,14 +50,21 @@ final class RealHabitsInteractor: HabitsInteractor {
         habit.frequency = draft.frequency
         habit.reminderTime = draft.reminderTime
         habit.updatedAt = Date()
+        syncReminder(for: habit)
     }
 
     func setArchived(_ habit: DBModel.Habit, archived: Bool, in context: ModelContext) {
         habit.archived = archived
         habit.updatedAt = Date()
+        if archived {
+            cancelReminder(for: habit)
+        } else {
+            syncReminder(for: habit)
+        }
     }
 
     func delete(_ habit: DBModel.Habit, in context: ModelContext) {
+        cancelReminder(for: habit)
         context.delete(habit)
     }
 
@@ -63,6 +79,27 @@ final class RealHabitsInteractor: HabitsInteractor {
             context.insert(entry)
         }
         habit.updatedAt = Date()
+    }
+
+    private func syncReminder(for habit: DBModel.Habit) {
+        let id = habit.id
+        let title = habit.title
+        if let time = habit.reminderTime, !habit.archived {
+            Task.detached { [scheduler] in
+                await scheduler.scheduleHabitReminder(habitID: id, title: title, time: time)
+            }
+        } else {
+            Task.detached { [scheduler] in
+                await scheduler.cancelHabitReminder(habitID: id)
+            }
+        }
+    }
+
+    private func cancelReminder(for habit: DBModel.Habit) {
+        let id = habit.id
+        Task.detached { [scheduler] in
+            await scheduler.cancelHabitReminder(habitID: id)
+        }
     }
 }
 

@@ -8,10 +8,10 @@ Edit freely; commits welcome.
 Items we deferred from Phase 2 plus broader polish. Ordered roughly by user-visible
 impact, not by sequence — pick whatever's most useful next.
 
-- [ ] **Notification scheduling.** Tasks (`dueDate`) and Habits (`reminderTime`)
-      both store the data but nothing's wired to `UNUserNotificationCenter`. See
-      "Habits → reminder = push notification" follow-up below; Tasks needs the
-      same treatment for due-date alerts.
+- [ ] **Notification scheduling for Tasks.** Habits ✅ (see follow-ups
+      below). Tasks `dueDate` still isn't wired to `UNUserNotificationCenter`
+      — apply the same pattern (`NotificationScheduler.scheduleTaskDue` +
+      cancel on complete/delete).
 - [ ] **iCloud sync.** Schema is already CloudKit-compatible (no `.unique`,
       defaults everywhere, optional to-many relationships). Flip the entitlement
       and use `ModelConfiguration(cloudKitDatabase:)`. Requires a paid Apple
@@ -41,23 +41,14 @@ impact, not by sequence — pick whatever's most useful next.
       maybe persist to `UserDefaults` longer-term.
 
 ### Habits
-- [ ] **Make edit discoverable.** Edit currently sits behind a swipe-leading
-      action (blue pencil); the owner couldn't find it. Tasks uses tap-to-edit
-      with swipe for toggle/delete — Habits should match that pattern for
-      consistency. Proposal: tap → edit sheet; swipe leading → toggle done;
-      swipe trailing → archive/delete.
-- [ ] **Reminder = real push notification.** Today, `Habit.reminderTime` is
-      stored but not scheduled. Wire up `UNUserNotificationCenter`:
-      - On habit save, schedule a daily local notification at `reminderTime`
-        (or remove if reminder cleared).
-      - On habit delete, cancel the notification.
-      - Use a stable identifier per habit (`"habit-\(habit.id.uuidString)"`)
-        so updates replace cleanly.
-      - Need notification permission flow; `UserPermissionsInteractor` already
-        has `.notifications` plumbing — call `request(permission:)` first time
-        the user enables a reminder.
-      - Remove the current "saved but not scheduled yet" footer from
-        `AddHabitSheet`.
+- [x] **Make edit discoverable.** ✅ Tap the title area opens the edit sheet
+      (chevron affordance); tap the leading circle still toggles done. Swipe
+      trailing remains archive/delete. (Commit referenced from this entry.)
+- [x] **Reminder = real push notification.** ✅ `RealNotificationScheduler`
+      wraps `UNUserNotificationCenter`; `RealHabitsInteractor` schedules /
+      cancels on add / update / archive / delete using a stable
+      `habit-reminder-<UUID>` identifier. Permission is requested on first
+      schedule. Footer text in `AddHabitSheet` updated.
 
 ### Contacts
 - [ ] **Swipe-right to mark interaction.** Add a leading swipe action on the

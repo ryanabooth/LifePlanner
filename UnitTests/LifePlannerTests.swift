@@ -2,6 +2,29 @@ import XCTest
 import SwiftData
 @testable import LifePlanner
 
+actor FakeNotificationScheduler: NotificationScheduler {
+    private(set) var scheduled: [(id: UUID, title: String, time: Date)] = []
+    private(set) var cancelled: [UUID] = []
+
+    func scheduleHabitReminder(habitID: UUID, title: String, time: Date) async {
+        scheduled.append((habitID, title, time))
+    }
+
+    func cancelHabitReminder(habitID: UUID) async {
+        cancelled.append(habitID)
+    }
+}
+
+extension FakeNotificationScheduler {
+    func wait(for predicate: @Sendable (FakeNotificationScheduler) async -> Bool, timeout: TimeInterval = 1.0) async {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if await predicate(self) { return }
+            try? await Task.sleep(nanoseconds: 10_000_000)
+        }
+    }
+}
+
 final class LifePlannerTests: XCTestCase {
 
     func test_appStateDefaults() {
@@ -62,7 +85,7 @@ final class LifePlannerTests: XCTestCase {
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         let context = ModelContext(container)
-        let interactor = RealHabitsInteractor()
+        let interactor = RealHabitsInteractor(scheduler: StubNotificationScheduler())
 
         interactor.add(HabitDraft(title: "Read 10 pages"), in: context)
         try context.save()
@@ -118,6 +141,44 @@ final class LifePlannerTests: XCTestCase {
         try context.save()
         XCTAssertEqual((goal.linkedTasks ?? []).count, 1)
         XCTAssertEqual((goal.linkedHabits ?? []).count, 0)
+    }
+
+    @MainActor
+    func test_habitsInteractor_schedulesAndCancelsReminders() async throws {
+        let container = try ModelContainer(
+            for: DBModel.Habit.self, DBModel.HabitLogEntry.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let scheduler = FakeNotificationScheduler()
+        let interactor = RealHabitsInteractor(scheduler: scheduler)
+
+        let reminderTime = Calendar.current.date(bySettingHour: 8, minute: 0, second: 0, of: Date())!
+
+        // Add with reminder -> schedule fires.
+        interactor.add(HabitDraft(title: "Stretch", reminderTime: reminderTime), in: context)
+        try context.save()
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+        await scheduler.wait { await !$0.scheduled.isEmpty }
+        let scheduledNow = await scheduler.scheduled
+        XCTAssertEqual(scheduledNow.count, 1)
+        XCTAssertEqual(scheduledNow.first?.id, habit.id)
+        XCTAssertEqual(scheduledNow.first?.title, "Stretch")
+
+        // Update to clear reminder -> cancel fires.
+        interactor.update(habit, with: HabitDraft(title: "Stretch", reminderTime: nil), in: context)
+        try context.save()
+        await scheduler.wait { await !$0.cancelled.isEmpty }
+        let cancelledNow = await scheduler.cancelled
+        XCTAssertEqual(cancelledNow.last, habit.id)
+
+        // Delete -> cancel fires again.
+        interactor.delete(habit, in: context)
+        try context.save()
+        await scheduler.wait { await $0.cancelled.count >= 2 }
+        let cancelledAfter = await scheduler.cancelled
+        XCTAssertEqual(cancelledAfter.count, 2)
+        XCTAssertTrue(cancelledAfter.allSatisfy { $0 == habit.id })
     }
 
     @MainActor
@@ -185,7 +246,7 @@ final class LifePlannerTests: XCTestCase {
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         let context = ModelContext(container)
-        let interactor = RealHabitsInteractor()
+        let interactor = RealHabitsInteractor(scheduler: StubNotificationScheduler())
 
         interactor.add(HabitDraft(title: "Stretch"), in: context)
         try context.save()

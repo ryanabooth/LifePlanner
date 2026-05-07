@@ -46,7 +46,7 @@ struct AddHabitSheet: View {
                     }
                 }
                 Section {
-                    Toggle("Reminder", isOn: $includeReminder)
+                    Toggle("Daily reminder", isOn: $includeReminder)
                     if includeReminder {
                         DatePicker(
                             "At",
@@ -59,7 +59,7 @@ struct AddHabitSheet: View {
                     }
                 } footer: {
                     if includeReminder {
-                        Text("Reminder time is saved but notifications aren't scheduled yet.")
+                        Text("You'll be asked for notification permission the first time you save a reminder.")
                             .font(.footnote)
                     }
                 }

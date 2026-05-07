@@ -57,52 +57,71 @@ struct HabitsTabView: View {
 
     @ViewBuilder
     private func row(for habit: DBModel.Habit) -> some View {
-        HabitRow(habit: habit)
-            .contentShape(Rectangle())
-            .onTapGesture {
+        HabitRow(
+            habit: habit,
+            onToggle: {
                 injected.interactors.habits.toggleDone(habit, on: Date(), in: modelContext)
+            },
+            onEdit: {
+                editing = habit
             }
-            .swipeActions(edge: .trailing) {
-                Button(role: .destructive) {
-                    injected.interactors.habits.delete(habit, in: modelContext)
-                } label: {
-                    Label("Delete", systemImage: "trash")
-                }
-                Button {
-                    injected.interactors.habits.setArchived(habit, archived: true, in: modelContext)
-                } label: {
-                    Label("Archive", systemImage: "archivebox")
-                }
-                .tint(.gray)
+        )
+        .swipeActions(edge: .trailing) {
+            Button(role: .destructive) {
+                injected.interactors.habits.delete(habit, in: modelContext)
+            } label: {
+                Label("Delete", systemImage: "trash")
             }
-            .swipeActions(edge: .leading) {
-                Button {
-                    editing = habit
-                } label: {
-                    Label("Edit", systemImage: "pencil")
-                }
-                .tint(.blue)
+            Button {
+                injected.interactors.habits.setArchived(habit, archived: true, in: modelContext)
+            } label: {
+                Label("Archive", systemImage: "archivebox")
             }
+            .tint(.gray)
+        }
     }
 }
 
 private struct HabitRow: View {
     let habit: DBModel.Habit
+    let onToggle: () -> Void
+    let onEdit: () -> Void
 
     var body: some View {
         let done = habit.isDone(on: Date())
         HStack(spacing: 12) {
-            Image(systemName: done ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(done ? .green : .secondary)
-                .font(.title3)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(habit.title)
-                    .strikethrough(done)
-                    .foregroundStyle(done ? .secondary : .primary)
-                Text(habit.frequency.label)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            Button(action: onToggle) {
+                Image(systemName: done ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(done ? .green : .secondary)
+                    .contentShape(Rectangle())
+                    .frame(width: 32, height: 32)
             }
+            .buttonStyle(.borderless)
+
+            Button(action: onEdit) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(habit.title)
+                            .strikethrough(done)
+                            .foregroundStyle(done ? .secondary : .primary)
+                        HStack(spacing: 6) {
+                            Text(habit.frequency.label)
+                            if habit.reminderTime != nil {
+                                Image(systemName: "bell.fill")
+                            }
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         }
     }
 }
