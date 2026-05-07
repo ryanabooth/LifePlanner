@@ -1,6 +1,6 @@
 //
 //  RequestMocking.swift
-//  CountriesSwiftUI
+//  LifePlanner
 //
 //  Created by Alexey Naumov on 30.10.2019.
 //  Copyright © 2019 Alexey Naumov. All rights reserved.

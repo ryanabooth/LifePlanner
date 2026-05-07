@@ -8,7 +8,7 @@
 
 import Testing
 import UIKit.UIImage
-@testable import CountriesSwiftUI
+@testable import LifePlanner
 
 @Suite(.serialized) final class ImageWebRepositoryTests {
 

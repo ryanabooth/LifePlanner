@@ -11,7 +11,7 @@ import Testing
 import Combine
 import SwiftUI
 import ViewInspector
-@testable import CountriesSwiftUI
+@testable import LifePlanner
 
 @Suite struct LoadableTests {
 

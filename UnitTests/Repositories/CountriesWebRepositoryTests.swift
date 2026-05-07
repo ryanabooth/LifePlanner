@@ -7,7 +7,7 @@
 //
 
 import Testing
-@testable import CountriesSwiftUI
+@testable import LifePlanner
 
 @Suite(.serialized) final class CountriesWebRepositoryTests {
 

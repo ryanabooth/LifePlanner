@@ -1,6 +1,6 @@
 //
 //  MockedSystemPermissions.swift
-//  CountriesSwiftUI
+//  LifePlanner
 //
 //  Created by Alexey on 22/11/24.
 //  Copyright © 2024 Alexey Naumov. All rights reserved.
@@ -8,7 +8,7 @@
 
 import Foundation
 import UserNotifications
-@testable import CountriesSwiftUI
+@testable import LifePlanner
 
 final class MockedSystemPushNotifications: Mock, SystemNotificationsCenter {
     enum Action: Equatable {

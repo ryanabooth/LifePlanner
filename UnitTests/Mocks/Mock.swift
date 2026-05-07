@@ -7,7 +7,7 @@
 //
 
 import Testing
-@testable import CountriesSwiftUI
+@testable import LifePlanner
 
 protocol Mock {
     associatedtype Action: Equatable
