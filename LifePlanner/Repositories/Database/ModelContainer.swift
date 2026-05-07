@@ -1,11 +1,3 @@
-//
-//  ModelContainer.swift
-//  LifePlanner
-//
-//  Created by Alexey on 7/11/24.
-//  Copyright © 2024 Alexey Naumov. All rights reserved.
-//
-
 import SwiftData
 
 extension ModelContainer {
@@ -14,8 +6,11 @@ extension ModelContainer {
         inMemoryOnly: Bool = false, isStub: Bool = false
     ) throws -> ModelContainer {
         let schema = Schema.appSchema
-        let modelConfiguration = ModelConfiguration(isStub ? "stub" : nil, schema: schema, isStoredInMemoryOnly: inMemoryOnly)
-        return try ModelContainer(for: schema, configurations: [modelConfiguration])
+        let configuration = ModelConfiguration(
+            isStub ? "stub" : nil,
+            schema: schema,
+            isStoredInMemoryOnly: inMemoryOnly)
+        return try ModelContainer(for: schema, configurations: [configuration])
     }
 
     static var stub: ModelContainer {
@@ -23,9 +18,6 @@ extension ModelContainer {
     }
 
     var isStub: Bool {
-        return configurations.first?.name == "stub"
+        configurations.first?.name == "stub"
     }
 }
-
-@ModelActor
-final actor MainDBRepository { }

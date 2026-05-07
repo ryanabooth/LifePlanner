@@ -1,11 +1,3 @@
-//
-//  DIContainer.swift
-//  LifePlanner
-//
-//  Created by Alexey on 7/11/24.
-//  Copyright © 2024 Alexey Naumov. All rights reserved.
-//
-
 import SwiftUI
 import SwiftData
 
@@ -25,23 +17,11 @@ struct DIContainer {
 }
 
 extension DIContainer {
-    struct WebRepositories {
-        let images: ImagesWebRepository
-        let countries: CountriesWebRepository
-        let pushToken: PushTokenWebRepository
-    }
-    struct DBRepositories {
-        let countries: CountriesDBRepository
-    }
     struct Interactors {
-        let images: ImagesInteractor
-        let countries: CountriesInteractor
         let userPermissions: UserPermissionsInteractor
 
         static var stub: Self {
-            .init(images: StubImagesInteractor(),
-                  countries: StubCountriesInteractor(),
-                  userPermissions: StubUserPermissionsInteractor())
+            .init(userPermissions: StubUserPermissionsInteractor())
         }
     }
 }
@@ -52,7 +32,6 @@ extension EnvironmentValues {
 
 extension View {
     func inject(_ container: DIContainer) -> some View {
-        return self
-            .environment(\.injected, container)
+        environment(\.injected, container)
     }
 }

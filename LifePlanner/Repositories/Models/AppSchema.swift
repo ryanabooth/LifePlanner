@@ -1,23 +1,19 @@
-//
-//  AppSchema.swift
-//  LifePlanner
-//
-//  Created by Alexey on 7/11/24.
-//  Copyright © 2024 Alexey Naumov. All rights reserved.
-//
-
 import SwiftData
 
 enum DBModel { }
 
+@Model
+final class SchemaPlaceholder {
+    var marker: String = ""
+    init(marker: String = "") { self.marker = marker }
+}
+
 extension Schema {
-    private static var actualVersion: Schema.Version = Version(1, 0, 0)
+    private static var actualVersion: Schema.Version = Version(0, 1, 0)
 
     static var appSchema: Schema {
         Schema([
-            DBModel.Country.self,
-            DBModel.CountryDetails.self,
-            DBModel.Currency.self,
+            SchemaPlaceholder.self
         ], version: actualVersion)
     }
 }

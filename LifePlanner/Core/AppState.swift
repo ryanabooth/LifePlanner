@@ -1,13 +1,4 @@
-//
-//  AppState.swift
-//  LifePlanner
-//
-//  Created by Alexey Naumov on 23.10.2019.
-//  Copyright © 2019 Alexey Naumov. All rights reserved.
-//
-
 import SwiftUI
-import Combine
 
 struct AppState: Equatable {
     var routing = ViewRouting()
@@ -17,8 +8,7 @@ struct AppState: Equatable {
 
 extension AppState {
     struct ViewRouting: Equatable {
-        var countriesList = CountriesList.Routing()
-        var countryDetails = CountryDetails.Routing()
+        var selectedTab: MainTab = .tasks
     }
 }
 
@@ -31,20 +21,19 @@ extension AppState {
 
 extension AppState {
     struct Permissions: Equatable {
-        var push: Permission.Status = .unknown
+        var notifications: Permission.Status = .unknown
     }
 
     static func permissionKeyPath(for permission: Permission) -> WritableKeyPath<AppState, Permission.Status> {
-        let pathToPermissions = \AppState.permissions
         switch permission {
-        case .pushNotifications:
-            return pathToPermissions.appending(path: \.push)
+        case .notifications:
+            return \AppState.permissions.notifications
         }
     }
 }
 
 func == (lhs: AppState, rhs: AppState) -> Bool {
-    return lhs.routing == rhs.routing
+    lhs.routing == rhs.routing
         && lhs.system == rhs.system
         && lhs.permissions == rhs.permissions
 }

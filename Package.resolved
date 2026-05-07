@@ -1,0 +1,24 @@
+{
+  "originHash" : "b95b455dc538ab03489f3d1d6520fca46cb90df05e3e526629e071d18d10e952",
+  "pins" : [
+    {
+      "identity" : "environmentoverrides",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/nalexn/EnvironmentOverrides",
+      "state" : {
+        "revision" : "d0b763a678d254e51c74c48e83119bd063250ba3",
+        "version" : "0.0.4"
+      }
+    },
+    {
+      "identity" : "viewinspector",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/nalexn/ViewInspector",
+      "state" : {
+        "revision" : "e9a06346499a3a889165647e3f23f8a7b2609a1c",
+        "version" : "0.10.3"
+      }
+    }
+  ],
+  "version" : 3
+}

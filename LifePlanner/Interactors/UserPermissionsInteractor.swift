@@ -1,16 +1,8 @@
-//
-//  UserPermissionsInteractor.swift
-//  LifePlanner
-//
-//  Created by Alexey Naumov on 26.04.2020.
-//  Copyright © 2020 Alexey Naumov. All rights reserved.
-//
-
 import Foundation
 import UserNotifications
 
 enum Permission {
-    case pushNotifications
+    case notifications
 }
 
 extension Permission {
@@ -39,11 +31,9 @@ protocol SystemNotificationsCenter {
 extension UNNotificationSettings: SystemNotificationsSettings { }
 extension UNUserNotificationCenter: SystemNotificationsCenter {
     func currentSettings() async -> any SystemNotificationsSettings {
-        return await notificationSettings()
+        await notificationSettings()
     }
 }
-
-// MARK: - RealUserPermissionsInteractor
 
 final class RealUserPermissionsInteractor: UserPermissionsInteractor {
 
@@ -66,9 +56,9 @@ final class RealUserPermissionsInteractor: UserPermissionsInteractor {
         guard currentStatus == .unknown else { return }
         let appState = appState
         switch permission {
-        case .pushNotifications:
+        case .notifications:
             Task { @MainActor in
-                appState[keyPath] = await pushNotificationsPermissionStatus()
+                appState[keyPath] = await notificationsPermissionStatus()
             }
         }
     }
@@ -81,15 +71,13 @@ final class RealUserPermissionsInteractor: UserPermissionsInteractor {
             return
         }
         switch permission {
-        case .pushNotifications:
+        case .notifications:
             Task {
-                await requestPushNotificationsPermission()
+                await requestNotificationsPermission()
             }
         }
     }
 }
-
-// MARK: - Push Notifications
 
 extension UNAuthorizationStatus {
     var map: Permission.Status {
@@ -104,26 +92,18 @@ extension UNAuthorizationStatus {
 
 private extension RealUserPermissionsInteractor {
 
-    func pushNotificationsPermissionStatus() async -> Permission.Status {
-        return await notificationCenter
-            .currentSettings()
-            .authorizationStatus.map
+    func notificationsPermissionStatus() async -> Permission.Status {
+        await notificationCenter.currentSettings().authorizationStatus.map
     }
 
-    func requestPushNotificationsPermission() async {
+    func requestNotificationsPermission() async {
         let center = notificationCenter
-        let isGranted = (try? await center.requestAuthorization(options: [.alert, .sound])) ?? false
-        appState[\.permissions.push] = isGranted ? .granted : .denied
+        let isGranted = (try? await center.requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+        appState[\.permissions.notifications] = isGranted ? .granted : .denied
     }
 }
-
-// MARK: -
 
 final class StubUserPermissionsInteractor: UserPermissionsInteractor {
-
-    func resolveStatus(for permission: Permission) {
-    }
-    func request(permission: Permission) {
-    }
+    func resolveStatus(for permission: Permission) {}
+    func request(permission: Permission) {}
 }
-
