@@ -20,11 +20,13 @@ extension DIContainer {
     struct Interactors {
         let userPermissions: UserPermissionsInteractor
         let tasks: TasksInteractor
+        let habits: HabitsInteractor
 
         static var stub: Self {
             .init(
                 userPermissions: StubUserPermissionsInteractor(),
-                tasks: StubTasksInteractor()
+                tasks: StubTasksInteractor(),
+                habits: StubHabitsInteractor()
             )
         }
     }

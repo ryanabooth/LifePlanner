@@ -54,4 +54,53 @@ final class LifePlannerTests: XCTestCase {
         let all = try context.fetch(FetchDescriptor<DBModel.Task>())
         XCTAssertTrue(all.isEmpty)
     }
+
+    @MainActor
+    func test_habitsInteractor_addAndToggleToday() throws {
+        let container = try ModelContainer(
+            for: DBModel.Habit.self, DBModel.HabitLogEntry.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let interactor = RealHabitsInteractor()
+
+        interactor.add(HabitDraft(title: "Read 10 pages"), in: context)
+        try context.save()
+
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+        XCTAssertFalse(habit.isDone(on: Date()))
+
+        interactor.toggleDone(habit, on: Date(), in: context)
+        try context.save()
+        XCTAssertTrue(habit.isDone(on: Date()))
+        XCTAssertEqual((habit.entries ?? []).count, 1)
+
+        // Toggling again should remove today's entry.
+        interactor.toggleDone(habit, on: Date(), in: context)
+        try context.save()
+        XCTAssertFalse(habit.isDone(on: Date()))
+        XCTAssertEqual((habit.entries ?? []).count, 0)
+    }
+
+    @MainActor
+    func test_habitsInteractor_archiveAndDelete() throws {
+        let container = try ModelContainer(
+            for: DBModel.Habit.self, DBModel.HabitLogEntry.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let interactor = RealHabitsInteractor()
+
+        interactor.add(HabitDraft(title: "Stretch"), in: context)
+        try context.save()
+
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+        interactor.setArchived(habit, archived: true, in: context)
+        try context.save()
+        XCTAssertTrue(habit.archived)
+
+        interactor.delete(habit, in: context)
+        try context.save()
+        XCTAssertTrue(try context.fetch(FetchDescriptor<DBModel.Habit>()).isEmpty)
+    }
 }

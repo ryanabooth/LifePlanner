@@ -47,6 +47,7 @@ extension AppEnvironment {
                 }
             })
         let tasks = RealTasksInteractor()
-        return .init(userPermissions: userPermissions, tasks: tasks)
+        let habits = RealHabitsInteractor()
+        return .init(userPermissions: userPermissions, tasks: tasks, habits: habits)
     }
 }
