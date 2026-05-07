@@ -46,6 +46,7 @@ extension AppEnvironment {
                     UIApplication.shared.open($0, options: [:], completionHandler: nil)
                 }
             })
-        return .init(userPermissions: userPermissions)
+        let tasks = RealTasksInteractor()
+        return .init(userPermissions: userPermissions, tasks: tasks)
     }
 }
