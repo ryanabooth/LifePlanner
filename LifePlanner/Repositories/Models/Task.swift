@@ -1,7 +1,27 @@
 import Foundation
 import SwiftData
 
-enum TaskPriority: Int, Codable, CaseIterable, Identifiable {
+enum TaskSortOrder: String, CaseIterable {
+    case dueDate
+    case priority
+
+    var label: String {
+        switch self {
+        case .dueDate: return "Due Date"
+        case .priority: return "Priority"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .dueDate: return "calendar"
+        case .priority: return "flag"
+        }
+    }
+}
+
+enum TaskPriority: Int, Codable, CaseIterable, Identifiable, Comparable {
+    static func < (lhs: TaskPriority, rhs: TaskPriority) -> Bool { lhs.rawValue < rhs.rawValue }
     case low = 0
     case normal = 1
     case high = 2
