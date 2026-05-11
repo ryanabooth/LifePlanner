@@ -4,10 +4,13 @@ import UserNotifications
 protocol NotificationScheduler: Sendable {
     func scheduleHabitReminder(habitID: UUID, title: String, time: Date) async
     func cancelHabitReminder(habitID: UUID) async
+    func scheduleTaskDue(taskID: UUID, title: String, at fireDate: Date) async
+    func cancelTaskDue(taskID: UUID) async
 }
 
 extension NotificationScheduler {
     func habitReminderID(_ habitID: UUID) -> String { "habit-reminder-\(habitID.uuidString)" }
+    func taskDueID(_ taskID: UUID) -> String { "task-due-\(taskID.uuidString)" }
 }
 
 final class RealNotificationScheduler: NotificationScheduler {
@@ -47,6 +50,36 @@ final class RealNotificationScheduler: NotificationScheduler {
         center.removePendingNotificationRequests(withIdentifiers: [habitReminderID(habitID)])
     }
 
+    func scheduleTaskDue(taskID: UUID, title: String, at fireDate: Date) async {
+        guard fireDate > Date() else { return }
+        guard await ensureAuthorized() else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = "Task due."
+        content.sound = .default
+        content.categoryIdentifier = "task-due"
+
+        let comps = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: taskDueID(taskID),
+            content: content,
+            trigger: trigger
+        )
+
+        center.removePendingNotificationRequests(withIdentifiers: [taskDueID(taskID)])
+        do {
+            try await center.add(request)
+        } catch {
+            // Swallow — failure to schedule shouldn't block task save.
+        }
+    }
+
+    func cancelTaskDue(taskID: UUID) async {
+        center.removePendingNotificationRequests(withIdentifiers: [taskDueID(taskID)])
+    }
+
     private func ensureAuthorized() async -> Bool {
         let settings = await center.notificationSettings()
         switch settings.authorizationStatus {
@@ -65,4 +98,6 @@ final class RealNotificationScheduler: NotificationScheduler {
 final class StubNotificationScheduler: NotificationScheduler {
     func scheduleHabitReminder(habitID: UUID, title: String, time: Date) async {}
     func cancelHabitReminder(habitID: UUID) async {}
+    func scheduleTaskDue(taskID: UUID, title: String, at fireDate: Date) async {}
+    func cancelTaskDue(taskID: UUID) async {}
 }
