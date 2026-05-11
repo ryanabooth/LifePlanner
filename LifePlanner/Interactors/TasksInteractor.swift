@@ -18,6 +18,12 @@ protocol TasksInteractor {
 
 final class RealTasksInteractor: TasksInteractor {
 
+    private let scheduler: NotificationScheduler
+
+    init(scheduler: NotificationScheduler = RealNotificationScheduler()) {
+        self.scheduler = scheduler
+    }
+
     func add(_ draft: TaskDraft, in context: ModelContext) {
         let title = draft.title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return }
@@ -29,6 +35,7 @@ final class RealTasksInteractor: TasksInteractor {
             tags: draft.tags
         )
         context.insert(task)
+        syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: task.isDone)
     }
 
     func update(_ task: DBModel.Task, with draft: TaskDraft, in context: ModelContext) {
@@ -40,16 +47,39 @@ final class RealTasksInteractor: TasksInteractor {
         task.priority = draft.priority
         task.tags = draft.tags
         task.updatedAt = Date()
+        syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: task.isDone)
     }
 
     func toggleDone(_ task: DBModel.Task, in context: ModelContext) {
         task.isDone.toggle()
         task.completedAt = task.isDone ? Date() : nil
         task.updatedAt = Date()
+        if task.isDone {
+            cancelReminder(id: task.id)
+        } else {
+            syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: false)
+        }
     }
 
     func delete(_ task: DBModel.Task, in context: ModelContext) {
+        cancelReminder(id: task.id)
         context.delete(task)
+    }
+
+    private func syncReminder(id: UUID, title: String, dueDate: Date?, isDone: Bool) {
+        guard !isDone, let fireDate = dueDate else {
+            cancelReminder(id: id)
+            return
+        }
+        Swift.Task.detached { [scheduler] in
+            await scheduler.scheduleTaskDue(taskID: id, title: title, at: fireDate)
+        }
+    }
+
+    private func cancelReminder(id: UUID) {
+        Swift.Task.detached { [scheduler] in
+            await scheduler.cancelTaskDue(taskID: id)
+        }
     }
 }
 

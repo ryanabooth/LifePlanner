@@ -9,6 +9,14 @@ struct AddTaskSheet: View {
     private let isEditing: Bool
     private let onSave: (TaskDraft) -> Void
 
+    private static var defaultDueDate: Date {
+        var comps = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        comps.day = (comps.day ?? 0) + 1
+        comps.hour = 9
+        comps.minute = 0
+        return Calendar.current.date(from: comps) ?? Date()
+    }
+
     init(existing: DBModel.Task? = nil, onSave: @escaping (TaskDraft) -> Void) {
         if let existing {
             _draft = State(initialValue: TaskDraft(
@@ -43,18 +51,18 @@ struct AddTaskSheet: View {
                     Toggle("Due date", isOn: $includeDueDate)
                     if includeDueDate {
                         DatePicker(
-                            "Due",
+                            "Date & time",
                             selection: Binding(
-                                get: { draft.dueDate ?? Date() },
+                                get: { draft.dueDate ?? Self.defaultDueDate },
                                 set: { draft.dueDate = $0 }
                             ),
-                            displayedComponents: [.date]
+                            displayedComponents: [.date, .hourAndMinute]
                         )
                     }
                 }
                 .onChange(of: includeDueDate) { _, on in
                     if !on { draft.dueDate = nil }
-                    else if draft.dueDate == nil { draft.dueDate = Date() }
+                    else if draft.dueDate == nil { draft.dueDate = Self.defaultDueDate }
                 }
                 Section("Priority") {
                     Picker("Priority", selection: $draft.priority) {
