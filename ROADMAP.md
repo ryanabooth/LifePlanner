@@ -19,20 +19,8 @@ impact, not by sequence — pick whatever's most useful next.
 - [ ] **Habit polish.** Weekly + custom cadence (`HabitFrequency` enum is already
       extensible without schema migration), streak calculation, target-count
       per period.
-- [ ] **Goal polish.** Sub-goals (parent/child hierarchy on `DBModel.Goal`),
-      metric tracking ("12/24 books read") with units.
 - [ ] **Today summary.** Cross-feature dashboard: tasks due today + habits to
-      log + active goals at a glance. Could be a 5th tab or the Tasks tab header.
-- [ ] **WidgetKit extension.** Tasks-due-today and Habit-streak widgets. Stub
-      the App Group entitlement now if widgets are likely (avoids a store
-      migration later).
-- [ ] **App Intents / Shortcuts.** "Add task to LifePlanner", "Mark habit done",
-      "Log interaction with [contact]".
-- [ ] **Spotlight indexing.** Tasks and contacts searchable from system search.
-- [ ] **Goal ↔ Contact linking** (deferred — owner mentioned a future social
-      app would be the better home for this).
-
-## Follow-ups from sim verification (2026-05-07)
+      log + active goals at a glance. Display as the Tasks tab header.
 
 ### Tasks
 - [ ] **Sort toggle.** Allow user to switch sort order between *due date* (current
@@ -62,50 +50,15 @@ impact, not by sequence — pick whatever's most useful next.
       enrichment, so the sort needs to merge the system contact list with the
       enrichment table — fetch enrichments into a `[String: Date]` keyed by
       `systemIdentifier` once, then sort the system list with that lookup.
+- swipe right to mark as contacted
+- pin up to 9 contacts as favorites, similar to iMessage (stay on top, bigger avatars)
+- sync avatar from contacts
+- set reminder — contact reminder to call or reach out to friends / family
+    - suggest a text prompt
+    - open an iOS sharing modal that allows email/text/phone call etc
+
 
 ## TestFlight setup
-
-Goal: get the app onto the owner's iPhone via TestFlight so it can be
-exercised end-to-end on a real device.
-
-**Status (2026-05-07): blocked on Apple Developer Program payment approval.**
-Once the membership is active, work through prerequisites then per-build flow.
-
-### Prerequisites (one-time)
-
-- [ ] **Apple Developer Program enrollment** ($99/year). Required for code
-      signing with a distribution profile. Free Personal Team can't ship to
-      TestFlight — only run on your phone via cable, with a 7-day install
-      expiry.
-- [ ] **Get the Team ID.** https://developer.apple.com/account → Membership →
-      copy the 10-character "Team ID" (e.g. `ABCD123XYZ`). Will go into the
-      project's `DEVELOPMENT_TEAM` build setting.
-- [ ] **Set `DEVELOPMENT_TEAM` in `LifePlanner.xcodeproj/project.pbxproj`.**
-      Both Debug and Release configs of the `LifePlanner` target. Easiest via
-      Xcode → Project → Signing & Capabilities → Team dropdown (writes the
-      pbxproj for you). Currently empty.
-- [ ] **Confirm code-signing settings.** Once a team is selected, Xcode
-      should auto-set `CODE_SIGN_STYLE = Automatic`,
-      `CODE_SIGN_IDENTITY = "Apple Development"` (Debug) /
-      `"Apple Distribution"` (Release). For TestFlight uploads we want
-      automatic signing for the Release config.
-- [ ] **Register bundle ID `com.rbooth.lifeplanner`.** App Store Connect →
-      Identifiers → add an App ID. Or skip and let Xcode auto-register on
-      first archive (works as long as automatic signing is on and the team
-      has permission).
-- [ ] **Create the App Store Connect record.** https://appstoreconnect.apple.com
-      → My Apps → "+" → New App. Fields: Platform = iOS, Name = LifePlanner
-      (or your chosen public name), Primary Language, Bundle ID = the one
-      registered above, SKU = anything unique like `lifeplanner-001`,
-      User Access = Full. The app does **not** need a screenshot or
-      submission to use TestFlight — just the record.
-- [ ] **Create an App-Specific Password** for the upload step (or use an
-      App Store Connect API key — better long-term).
-      https://appleid.apple.com → Sign-In and Security → App-Specific
-      Passwords. Stash the password somewhere safe; you'll pass it to
-      `altool` via `--password`. (For an API key: App Store Connect →
-      Users and Access → Integrations → Keys → "+" → Admin role; download
-      the .p8 file and note the Key ID + Issuer ID.)
 
 ### Per-build flow
 

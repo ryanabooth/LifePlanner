@@ -4,13 +4,13 @@
 import PackageDescription
 
 let package = Package(
-    name: "LifePlanner",
+    name: "RBLifePlanner",
     platforms: [
         .iOS(.v18),
         .macOS(.v12)
     ],
     products: [
-        .library(name: "LifePlanner", targets: ["LifePlanner"])
+        .library(name: "RBLifePlanner", targets: ["LifePlanner"])
     ],
     dependencies: [
         .package(url: "https://github.com/nalexn/EnvironmentOverrides", from: "0.0.4"),
