@@ -14,6 +14,7 @@ extension AppEnvironment {
     static func bootstrap() -> AppEnvironment {
         let appState = Store<AppState>(AppState())
         let modelContainer = configuredModelContainer()
+        FarmBootstrap.seedSingletons(in: modelContainer.mainContext)
         let interactors = configuredInteractors(appState: appState)
         let diContainer = DIContainer(appState: appState, interactors: interactors)
         let deepLinksHandler = RealDeepLinksHandler(container: diContainer)

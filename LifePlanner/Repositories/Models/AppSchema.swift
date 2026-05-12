@@ -10,7 +10,10 @@ extension Schema {
             DBModel.Task.self,
             DBModel.Habit.self,
             DBModel.HabitLogEntry.self,
-            DBModel.Goal.self
+            DBModel.Goal.self,
+            DBModel.FarmState.self,
+            DBModel.FarmPlot.self,
+            DBModel.Quest.self
         ], version: actualVersion)
     }
 }
