@@ -24,6 +24,7 @@ extension DIContainer {
         let goals: GoalsInteractor
         let economy: EconomyInteractor
         let farm: FarmInteractor
+        let quests: QuestInteractor
 
         static var stub: Self {
             .init(
@@ -32,7 +33,8 @@ extension DIContainer {
                 habits: StubHabitsInteractor(),
                 goals: StubGoalsInteractor(),
                 economy: StubEconomyInteractor(),
-                farm: StubFarmInteractor()
+                farm: StubFarmInteractor(),
+                quests: StubQuestInteractor()
             )
         }
     }

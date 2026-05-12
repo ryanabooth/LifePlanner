@@ -357,6 +357,129 @@ final class LifePlannerTests: XCTestCase {
         XCTAssertEqual(plot.state, .dead, "withered too long becomes dead")
     }
 
+    // MARK: - Quests
+
+    @MainActor
+    func test_quests_rollDailyIsIdempotent() throws {
+        let context = try makeFarmContext()
+        let farm = RealFarmInteractor()
+        farm.bootstrap(in: context)
+        let quests = RealQuestInteractor(rng: { 0 })
+
+        let first = quests.rollDaily(on: Date(), in: context)
+        try context.save()
+        XCTAssertEqual(first.count, 3)
+        XCTAssertEqual(first.map(\.slot), [0, 1, 2])
+
+        let second = quests.rollDaily(on: Date(), in: context)
+        XCTAssertEqual(second.map(\.id), first.map(\.id), "second call returns the same rows")
+        let stored = try context.fetch(FetchDescriptor<DBModel.Quest>())
+        XCTAssertEqual(stored.count, 3, "no duplicates created")
+    }
+
+    @MainActor
+    func test_quests_rollDailyPullsFromOpenTasksAndHabits() throws {
+        let context = try makeFarmContext()
+        let farm = RealFarmInteractor()
+        farm.bootstrap(in: context)
+        let scheduler = StubNotificationScheduler()
+        let tasks = RealTasksInteractor(scheduler: scheduler, farm: farm)
+        let habits = RealHabitsInteractor(scheduler: scheduler, farm: farm)
+        let quests = RealQuestInteractor(rng: { 0 })
+
+        tasks.add(TaskDraft(title: "Pay bill", dueDate: Date(), priority: .high), in: context)
+        habits.add(HabitDraft(title: "Stretch"), in: context)
+        try context.save()
+
+        let rolled = quests.rollDaily(on: Date(), in: context)
+        XCTAssertEqual(rolled.count, 3)
+        let kinds = Set(rolled.map(\.kind))
+        XCTAssertTrue(kinds.contains(.taskDue), "uses available task")
+        XCTAssertTrue(kinds.contains(.habitDue), "uses available habit")
+        // Remaining slot pads with commonFieldTend.
+        XCTAssertTrue(kinds.contains(.commonFieldTend))
+    }
+
+    @MainActor
+    func test_quests_rerollCostsGoldAndBumpsCount() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let farm = RealFarmInteractor(economy: economy)
+        farm.bootstrap(in: context)
+        let quests = RealQuestInteractor(economy: economy, rng: { 0 })
+
+        let rolled = quests.rollDaily(on: Date(), in: context)
+        let slot0 = rolled[0]
+
+        // No gold → throws
+        XCTAssertThrowsError(try quests.reroll(slot0, in: context)) { error in
+            guard case QuestError.insufficientGold = error else {
+                return XCTFail("expected insufficientGold, got \(error)")
+            }
+        }
+
+        economy.credit(50, reason: "test", in: context)
+        let balanceBefore = economy.balance(in: context)
+        try quests.reroll(slot0, in: context)
+        XCTAssertEqual(slot0.rerollCount, 1)
+        XCTAssertEqual(economy.balance(in: context), balanceBefore - QuestTuning.rerollBaseCost)
+
+        // Second re-roll on same slot costs base + step.
+        try quests.reroll(slot0, in: context)
+        XCTAssertEqual(slot0.rerollCount, 2)
+        XCTAssertEqual(
+            economy.balance(in: context),
+            balanceBefore - QuestTuning.rerollBaseCost - (QuestTuning.rerollBaseCost + QuestTuning.rerollCostStep)
+        )
+    }
+
+    @MainActor
+    func test_quests_taskCompletionAutoClaims() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let farm = RealFarmInteractor(economy: economy)
+        farm.bootstrap(in: context)
+        let quests = RealQuestInteractor(economy: economy, rng: { 0 })
+        let tasks = RealTasksInteractor(scheduler: StubNotificationScheduler(), farm: farm, quests: quests)
+
+        tasks.add(TaskDraft(title: "Pay bill", dueDate: Date(), priority: .normal), in: context)
+        try context.save()
+        let task = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Task>()).first)
+
+        let rolled = quests.rollDaily(on: Date(), in: context)
+        let taskQuest = try XCTUnwrap(rolled.first { $0.kind == .taskDue && $0.referenceID == task.id })
+        XCTAssertEqual(taskQuest.state, .active)
+
+        let goldBefore = economy.balance(in: context)
+        tasks.toggleDone(task, in: context)
+        try context.save()
+
+        XCTAssertEqual(taskQuest.state, .completed, "completion auto-claims the quest")
+        XCTAssertEqual(economy.balance(in: context), goldBefore + taskQuest.goldReward)
+    }
+
+    @MainActor
+    func test_quests_expireOldQuests() throws {
+        let context = try makeFarmContext()
+        let farm = RealFarmInteractor()
+        farm.bootstrap(in: context)
+        let quests = RealQuestInteractor(rng: { 0 })
+
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        let stale = DBModel.Quest(
+            day: Calendar.current.startOfDay(for: yesterday),
+            slot: 0,
+            kind: .commonFieldTend,
+            goldReward: 3,
+            state: .active
+        )
+        context.insert(stale)
+        try context.save()
+
+        quests.expireOldQuests(on: Date(), in: context)
+        XCTAssertEqual(stale.state, .expired)
+    }
+
     @MainActor
     func test_farm_replantRequiresDeadPlotAndCostsGold() throws {
         let context = try makeFarmContext()

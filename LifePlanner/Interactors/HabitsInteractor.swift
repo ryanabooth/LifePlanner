@@ -21,15 +21,18 @@ final class RealHabitsInteractor: HabitsInteractor {
     private let calendar: Calendar
     private let scheduler: NotificationScheduler
     private let farm: FarmInteractor
+    private let quests: QuestInteractor
 
     init(
         calendar: Calendar = .current,
         scheduler: NotificationScheduler = RealNotificationScheduler(),
-        farm: FarmInteractor = StubFarmInteractor()
+        farm: FarmInteractor = StubFarmInteractor(),
+        quests: QuestInteractor = StubQuestInteractor()
     ) {
         self.calendar = calendar
         self.scheduler = scheduler
         self.farm = farm
+        self.quests = quests
     }
 
     func add(_ draft: HabitDraft, in context: ModelContext) {
@@ -84,6 +87,7 @@ final class RealHabitsInteractor: HabitsInteractor {
             )
             context.insert(entry)
             farm.applyHabitCompletion(habit, in: context)
+            quests.notifyCompletion(referenceID: habit.id, in: context)
         }
         habit.updatedAt = Date()
     }

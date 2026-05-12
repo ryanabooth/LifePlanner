@@ -22,6 +22,7 @@ extension AppEnvironment {
         let pushNotificationsHandler = RealPushNotificationsHandler(deepLinksHandler: deepLinksHandler)
         let systemEventsHandler = RealSystemEventsHandler(
             container: diContainer,
+            modelContainer: modelContainer,
             deepLinksHandler: deepLinksHandler,
             pushNotificationsHandler: pushNotificationsHandler)
         return AppEnvironment(
@@ -48,12 +49,14 @@ extension AppEnvironment {
                     UIApplication.shared.open($0, options: [:], completionHandler: nil)
                 }
             })
-        // Economy and Farm are shared singletons — Habits / Tasks / Goals interactors
-        // all reference the same Farm instance so contribution routing is consistent.
+        // Economy / Farm / Quests are shared singletons — Habits / Tasks / Goals
+        // interactors all reference the same instances so contribution routing
+        // and quest auto-claim are consistent across entry points.
         let economy = RealEconomyInteractor()
         let farm = RealFarmInteractor(economy: economy)
-        let tasks = RealTasksInteractor(farm: farm)
-        let habits = RealHabitsInteractor(farm: farm)
+        let quests = RealQuestInteractor(economy: economy)
+        let tasks = RealTasksInteractor(farm: farm, quests: quests)
+        let habits = RealHabitsInteractor(farm: farm, quests: quests)
         let goals = RealGoalsInteractor(farm: farm)
         return .init(
             userPermissions: userPermissions,
@@ -61,7 +64,8 @@ extension AppEnvironment {
             habits: habits,
             goals: goals,
             economy: economy,
-            farm: farm
+            farm: farm,
+            quests: quests
         )
     }
 }
