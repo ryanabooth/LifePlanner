@@ -6,14 +6,56 @@ struct TasksTabView: View {
     @Environment(\.injected) private var injected: DIContainer
     @Environment(\.modelContext) private var modelContext
 
-    @Query(
-        filter: #Predicate<DBModel.Task> { !$0.isDone },
-        sort: [
-            SortDescriptor(\DBModel.Task.dueDate, order: .forward),
-            SortDescriptor(\DBModel.Task.createdAt, order: .reverse)
-        ]
-    )
-    private var openTasks: [DBModel.Task]
+    @AppStorage("tasks.sortOrder") private var sortOrder: TaskSortOrder = .dueDate
+    @State private var showAdd = false
+    @State private var editing: DBModel.Task?
+
+    var body: some View {
+        NavigationStack {
+            TaskListContent(sortOrder: sortOrder, onEdit: { editing = $0 })
+                .navigationTitle("Tasks")
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { showAdd = true } label: { Image(systemName: "plus") }
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        sortMenu
+                    }
+                }
+                .sheet(isPresented: $showAdd) {
+                    AddTaskSheet { draft in
+                        injected.interactors.tasks.add(draft, in: modelContext)
+                    }
+                }
+                .sheet(item: $editing) { task in
+                    AddTaskSheet(existing: task) { draft in
+                        injected.interactors.tasks.update(task, with: draft, in: modelContext)
+                    }
+                }
+        }
+    }
+
+    private var sortMenu: some View {
+        Menu {
+            Picker("Sort by", selection: $sortOrder) {
+                ForEach(TaskSortOrder.allCases, id: \.self) { order in
+                    Label(order.label, systemImage: order.symbolName).tag(order)
+                }
+            }
+        } label: {
+            Image(systemName: "arrow.up.arrow.down")
+        }
+    }
+}
+
+private struct TaskListContent: View {
+
+    @Environment(\.injected) private var injected: DIContainer
+    @Environment(\.modelContext) private var modelContext
+
+    // Fetch unsorted; sort in-memory to avoid SwiftData SortDescriptor issues with enum keypaths.
+    @Query(filter: #Predicate<DBModel.Task> { !$0.isDone })
+    private var openTasksRaw: [DBModel.Task]
 
     @Query(
         filter: #Predicate<DBModel.Task> { $0.isDone },
@@ -21,51 +63,46 @@ struct TasksTabView: View {
     )
     private var doneTasks: [DBModel.Task]
 
-    @State private var showAdd = false
-    @State private var editing: DBModel.Task?
+    let sortOrder: TaskSortOrder
+    let onEdit: (DBModel.Task) -> Void
+
+    private var openTasks: [DBModel.Task] {
+        switch sortOrder {
+        case .dueDate:
+            openTasksRaw.sorted {
+                switch ($0.dueDate, $1.dueDate) {
+                case let (a?, b?): return a < b
+                case (_?, nil):   return true
+                case (nil, _?):   return false
+                case (nil, nil):  return $0.createdAt > $1.createdAt
+                }
+            }
+        case .priority:
+            openTasksRaw.sorted {
+                if $0.priorityRaw != $1.priorityRaw { return $0.priorityRaw > $1.priorityRaw }
+                return $0.createdAt > $1.createdAt
+            }
+        }
+    }
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if openTasks.isEmpty && doneTasks.isEmpty {
-                    ContentUnavailableView(
-                        "No tasks yet",
-                        systemImage: "checklist",
-                        description: Text("Tap + to add your first task.")
-                    )
-                } else {
-                    List {
-                        if !openTasks.isEmpty {
-                            Section("Open") {
-                                ForEach(openTasks) { row(for: $0) }
-                            }
-                        }
-                        if !doneTasks.isEmpty {
-                            Section("Done") {
-                                ForEach(doneTasks) { row(for: $0) }
-                            }
-                        }
+        if openTasksRaw.isEmpty && doneTasks.isEmpty {
+            ContentUnavailableView(
+                "No tasks yet",
+                systemImage: "checklist",
+                description: Text("Tap + to add your first task.")
+            )
+        } else {
+            List {
+                if !openTasks.isEmpty {
+                    Section("Open") {
+                        ForEach(openTasks, id: \.id) { row(for: $0) }
                     }
                 }
-            }
-            .navigationTitle("Tasks")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showAdd = true
-                    } label: {
-                        Image(systemName: "plus")
+                if !doneTasks.isEmpty {
+                    Section("Done") {
+                        ForEach(doneTasks) { row(for: $0) }
                     }
-                }
-            }
-            .sheet(isPresented: $showAdd) {
-                AddTaskSheet { draft in
-                    injected.interactors.tasks.add(draft, in: modelContext)
-                }
-            }
-            .sheet(item: $editing) { task in
-                AddTaskSheet(existing: task) { draft in
-                    injected.interactors.tasks.update(task, with: draft, in: modelContext)
                 }
             }
         }
@@ -75,12 +112,13 @@ struct TasksTabView: View {
     private func row(for task: DBModel.Task) -> some View {
         TaskRow(task: task)
             .contentShape(Rectangle())
-            .onTapGesture { editing = task }
+            .onTapGesture { onEdit(task) }
             .swipeActions(edge: .leading) {
                 Button {
                     injected.interactors.tasks.toggleDone(task, in: modelContext)
                 } label: {
-                    Label(task.isDone ? "Reopen" : "Done", systemImage: task.isDone ? "arrow.uturn.left" : "checkmark")
+                    Label(task.isDone ? "Reopen" : "Done",
+                          systemImage: task.isDone ? "arrow.uturn.left" : "checkmark")
                 }
                 .tint(task.isDone ? .gray : .green)
             }
