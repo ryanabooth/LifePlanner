@@ -52,7 +52,8 @@ extension DBModel {
         var title: String = ""
         var notes: String? = nil
         var dueDate: Date? = nil
-        var priority: TaskPriority = TaskPriority.normal
+        // Stored as Int so SortDescriptor can sort it at the SQL level.
+        var priorityRaw: Int = TaskPriority.normal.rawValue
         var isDone: Bool = false
         var completedAt: Date? = nil
         var tags: [String] = []
@@ -77,12 +78,21 @@ extension DBModel {
             self.title = title
             self.notes = notes
             self.dueDate = dueDate
-            self.priority = priority
+            self.priorityRaw = priority.rawValue
             self.isDone = isDone
             self.completedAt = completedAt
             self.tags = tags
             self.createdAt = createdAt
             self.updatedAt = updatedAt
         }
+    }
+}
+
+// Computed wrapper lives outside the @Model class so the macro never registers
+// `priority` as an entity attribute — only `priorityRaw` (Int) ends up in the schema.
+extension DBModel.Task {
+    var priority: TaskPriority {
+        get { TaskPriority(rawValue: priorityRaw) ?? .normal }
+        set { priorityRaw = newValue.rawValue }
     }
 }

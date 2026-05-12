@@ -15,10 +15,10 @@ struct TasksTabView: View {
             TaskListContent(sortOrder: sortOrder, onEdit: { editing = $0 })
                 .navigationTitle("Tasks")
                 .toolbar {
-                    ToolbarItem(placement: .primaryAction) {
+                    ToolbarItem(placement: .topBarTrailing) {
                         Button { showAdd = true } label: { Image(systemName: "plus") }
                     }
-                    ToolbarItem(placement: .secondaryAction) {
+                    ToolbarItem(placement: .topBarTrailing) {
                         sortMenu
                     }
                 }
@@ -53,35 +53,40 @@ private struct TaskListContent: View {
     @Environment(\.injected) private var injected: DIContainer
     @Environment(\.modelContext) private var modelContext
 
-    @Query private var openTasks: [DBModel.Task]
-    @Query private var doneTasks: [DBModel.Task]
+    // Fetch unsorted; sort in-memory to avoid SwiftData SortDescriptor issues with enum keypaths.
+    @Query(filter: #Predicate<DBModel.Task> { !$0.isDone })
+    private var openTasksRaw: [DBModel.Task]
 
+    @Query(
+        filter: #Predicate<DBModel.Task> { $0.isDone },
+        sort: [SortDescriptor(\DBModel.Task.completedAt, order: .reverse)]
+    )
+    private var doneTasks: [DBModel.Task]
+
+    let sortOrder: TaskSortOrder
     let onEdit: (DBModel.Task) -> Void
 
-    init(sortOrder: TaskSortOrder, onEdit: @escaping (DBModel.Task) -> Void) {
-        self.onEdit = onEdit
-        let openSort: [SortDescriptor<DBModel.Task>]
+    private var openTasks: [DBModel.Task] {
         switch sortOrder {
         case .dueDate:
-            openSort = [
-                SortDescriptor(\DBModel.Task.dueDate, order: .forward),
-                SortDescriptor(\DBModel.Task.createdAt, order: .reverse)
-            ]
+            openTasksRaw.sorted {
+                switch ($0.dueDate, $1.dueDate) {
+                case let (a?, b?): return a < b
+                case (_?, nil):   return true
+                case (nil, _?):   return false
+                case (nil, nil):  return $0.createdAt > $1.createdAt
+                }
+            }
         case .priority:
-            openSort = [
-                SortDescriptor(\DBModel.Task.priority, order: .reverse),
-                SortDescriptor(\DBModel.Task.createdAt, order: .reverse)
-            ]
+            openTasksRaw.sorted {
+                if $0.priorityRaw != $1.priorityRaw { return $0.priorityRaw > $1.priorityRaw }
+                return $0.createdAt > $1.createdAt
+            }
         }
-        _openTasks = Query(filter: #Predicate<DBModel.Task> { !$0.isDone }, sort: openSort)
-        _doneTasks = Query(
-            filter: #Predicate<DBModel.Task> { $0.isDone },
-            sort: [SortDescriptor(\DBModel.Task.completedAt, order: .reverse)]
-        )
     }
 
     var body: some View {
-        if openTasks.isEmpty && doneTasks.isEmpty {
+        if openTasksRaw.isEmpty && doneTasks.isEmpty {
             ContentUnavailableView(
                 "No tasks yet",
                 systemImage: "checklist",
@@ -91,7 +96,7 @@ private struct TaskListContent: View {
             List {
                 if !openTasks.isEmpty {
                     Section("Open") {
-                        ForEach(openTasks) { row(for: $0) }
+                        ForEach(openTasks, id: \.id) { row(for: $0) }
                     }
                 }
                 if !doneTasks.isEmpty {
