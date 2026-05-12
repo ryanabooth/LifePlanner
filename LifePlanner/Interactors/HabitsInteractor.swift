@@ -20,13 +20,16 @@ final class RealHabitsInteractor: HabitsInteractor {
 
     private let calendar: Calendar
     private let scheduler: NotificationScheduler
+    private let farm: FarmInteractor
 
     init(
         calendar: Calendar = .current,
-        scheduler: NotificationScheduler = RealNotificationScheduler()
+        scheduler: NotificationScheduler = RealNotificationScheduler(),
+        farm: FarmInteractor = StubFarmInteractor()
     ) {
         self.calendar = calendar
         self.scheduler = scheduler
+        self.farm = farm
     }
 
     func add(_ draft: HabitDraft, in context: ModelContext) {
@@ -71,12 +74,16 @@ final class RealHabitsInteractor: HabitsInteractor {
     func toggleDone(_ habit: DBModel.Habit, on day: Date, in context: ModelContext) {
         if let existing = habit.entry(on: day, calendar: calendar) {
             context.delete(existing)
+            // Reversing a completion does not refund health — the contribution
+            // already affected the plot's lastContribution timestamp. Keeping
+            // the model write-once on completion avoids audit complexity.
         } else {
             let entry = DBModel.HabitLogEntry(
                 date: calendar.startOfDay(for: day),
                 habit: habit
             )
             context.insert(entry)
+            farm.applyHabitCompletion(habit, in: context)
         }
         habit.updatedAt = Date()
     }
