@@ -1238,4 +1238,83 @@ final class LifePlannerTests: XCTestCase {
         XCTAssertEqual(all.count, 1)
         XCTAssertTrue(all[0].isDone)
     }
+
+    // MARK: - Stats / Insights
+
+    @MainActor
+    func test_stats_entryCountMatchesLoggedHabits() throws {
+        let context = try makeFarmContext()
+        let habitInteractor = RealHabitsInteractor()
+
+        // Insert two habits and log them
+        habitInteractor.add(HabitDraft(title: "Run"), in: context)
+        habitInteractor.add(HabitDraft(title: "Read"), in: context)
+        let habits = try context.fetch(FetchDescriptor<DBModel.Habit>())
+        XCTAssertEqual(habits.count, 2)
+
+        for habit in habits {
+            habitInteractor.toggleDone(habit, on: Date(), in: context)
+        }
+
+        let entries = try context.fetch(FetchDescriptor<DBModel.HabitLogEntry>())
+        XCTAssertEqual(entries.count, 2)
+    }
+
+    @MainActor
+    func test_stats_goalContributionCounting() throws {
+        let context = try makeFarmContext()
+        let habitInteractor = RealHabitsInteractor()
+        let goalInteractor  = RealGoalsInteractor(farm: StubFarmInteractor())
+        let taskInteractor  = RealTasksInteractor()
+
+        // Create a goal and link a habit to it
+        goalInteractor.add(GoalDraft(title: "Fitness"), in: context)
+        let goal = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Goal>()).first)
+
+        habitInteractor.add(HabitDraft(title: "Run"), in: context)
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+        goal.linkedHabits = [habit]
+
+        // Log the habit twice
+        habitInteractor.toggleDone(habit, on: Date(), in: context)
+        habitInteractor.toggleDone(
+            habit,
+            on: Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date(),
+            in: context
+        )
+
+        // Link a completed task
+        taskInteractor.add(TaskDraft(title: "Gym session"), in: context)
+        let task = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Task>()).first)
+        goal.linkedTasks = [task]
+        taskInteractor.toggleDone(task, in: context)
+        context.saveQuietly()
+
+        // Verify contributions: 2 habit entries + 1 completed task = 3
+        let habitContribs = (goal.linkedHabits ?? []).reduce(0) { $0 + ($1.entries?.count ?? 0) }
+        let taskContribs  = (goal.linkedTasks ?? []).filter { $0.isDone }.count
+        XCTAssertEqual(habitContribs + taskContribs, 3)
+    }
+
+    @MainActor
+    func test_stats_questKindGrouping() throws {
+        let context = try makeFarmContext()
+
+        // Insert completed quests of different kinds
+        let q1 = DBModel.Quest(kind: .taskDue,    goldReward: 10, state: .completed)
+        let q2 = DBModel.Quest(kind: .taskDue,    goldReward: 10, state: .completed)
+        let q3 = DBModel.Quest(kind: .habitDue,   goldReward: 10, state: .completed)
+        let q4 = DBModel.Quest(kind: .habitDue,   goldReward: 10, state: .active)
+        context.insert(q1); context.insert(q2); context.insert(q3); context.insert(q4)
+        context.saveQuietly()
+
+        let all = try context.fetch(FetchDescriptor<DBModel.Quest>())
+        let completed = all.filter { $0.state == .completed }
+        XCTAssertEqual(completed.count, 3)
+
+        let grouped = Dictionary(grouping: completed) { $0.kind }
+        XCTAssertEqual(grouped[.taskDue]?.count, 2)
+        XCTAssertEqual(grouped[.habitDue]?.count, 1)
+        XCTAssertNil(grouped[.commonFieldTend])
+    }
 }

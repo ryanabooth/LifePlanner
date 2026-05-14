@@ -22,6 +22,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                insightsSection
                 notificationsSection
                 dataSection
                 aboutSection
@@ -45,6 +46,14 @@ struct SettingsView: View {
     }
 
     // MARK: - Sections
+
+    private var insightsSection: some View {
+        Section {
+            NavigationLink(destination: StatsView()) {
+                Label("View insights", systemImage: "chart.xyaxis.line")
+            }
+        }
+    }
 
     private var notificationsSection: some View {
         Section {
