@@ -1,6 +1,7 @@
 import SwiftUI
 
 enum MainTab: Hashable {
+    case farm
     case tasks
     case habits
     case goals
@@ -9,10 +10,14 @@ enum MainTab: Hashable {
 struct MainTabView: View {
 
     @Environment(\.injected) private var injected: DIContainer
-    @State private var selection: MainTab = .tasks
+    @State private var selection: MainTab = .farm
 
     var body: some View {
         TabView(selection: $selection) {
+            FarmTabView()
+                .tabItem { Label("Farm", systemImage: "leaf") }
+                .tag(MainTab.farm)
+
             TasksTabView()
                 .tabItem { Label("Tasks", systemImage: "checklist") }
                 .tag(MainTab.tasks)

@@ -8,7 +8,7 @@ struct AppState: Equatable {
 
 extension AppState {
     struct ViewRouting: Equatable {
-        var selectedTab: MainTab = .tasks
+        var selectedTab: MainTab = .farm
     }
 }
 
