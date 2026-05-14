@@ -115,6 +115,7 @@ final class RealHabitsInteractor: HabitsInteractor {
             context.insert(entry)
             let matured = farm.applyHabitCompletion(habit, in: context)
             quests.notifyCompletion(referenceID: habit.id, in: context)
+            if habit.goals?.isEmpty != false { quests.notifyCommonFieldTend(in: context) }
             quests.checkFarmQuests(in: context)
             quests.trackMatureTransitions(count: matured, in: context)
         }

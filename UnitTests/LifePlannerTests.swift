@@ -474,7 +474,8 @@ final class LifePlannerTests: XCTestCase {
         try context.save()
 
         XCTAssertEqual(taskQuest.state, .completed, "completion auto-claims the quest")
-        XCTAssertEqual(economy.balance(in: context), goldBefore + taskQuest.goldReward)
+        let commonFieldReward = rolled.first { $0.kind == .commonFieldTend }?.goldReward ?? 0
+        XCTAssertEqual(economy.balance(in: context), goldBefore + taskQuest.goldReward + commonFieldReward)
     }
 
     @MainActor
@@ -709,10 +710,12 @@ final class LifePlannerTests: XCTestCase {
 
         XCTAssertEqual(harvestQuest.state, .completed, "harvestMature auto-claimed after checkFarmQuests")
         // The refresh-on-add upgrade slotted the new habit into a quest, so the
-        // habitDue quest auto-claims here too. Both rewards land.
+        // habitDue quest auto-claims here too. The remaining commonFieldTend slot
+        // also auto-claims because the habit is unlinked. All rewards land.
+        let commonFieldReward = rolled.filter { $0.kind == .commonFieldTend }.reduce(0) { $0 + $1.goldReward }
         XCTAssertEqual(
             economy.balance(in: context),
-            goldBefore + harvestQuest.goldReward + QuestTuning.habitReward
+            goldBefore + harvestQuest.goldReward + QuestTuning.habitReward + commonFieldReward
         )
     }
 

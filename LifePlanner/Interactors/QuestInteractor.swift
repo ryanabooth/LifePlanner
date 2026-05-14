@@ -53,6 +53,11 @@ protocol QuestInteractor {
     /// pays out without an explicit claim step.
     func notifyCompletion(referenceID: UUID, in context: ModelContext)
 
+    /// Auto-claim any active `commonFieldTend` quest for today. Called whenever
+    /// an unlinked task or habit is completed (any common-field health increase
+    /// satisfies the quest regardless of the field's current health level).
+    func notifyCommonFieldTend(in context: ModelContext)
+
     /// Auto-claim any active `harvestMature` quests whose farm-state condition
     /// is now satisfied. Called after every farm contribution.
     func checkFarmQuests(in context: ModelContext)
@@ -154,6 +159,14 @@ final class RealQuestInteractor: QuestInteractor {
         let today = calendar.startOfDay(for: Date())
         let todays = fetchQuests(on: today, in: context)
         for quest in todays where quest.state == .active && quest.referenceID == referenceID {
+            credit(quest, in: context)
+        }
+    }
+
+    func notifyCommonFieldTend(in context: ModelContext) {
+        let today = calendar.startOfDay(for: Date())
+        let todays = fetchQuests(on: today, in: context)
+        if let quest = todays.first(where: { $0.state == .active && $0.kind == .commonFieldTend }) {
             credit(quest, in: context)
         }
     }
@@ -399,6 +412,7 @@ final class StubQuestInteractor: QuestInteractor {
     func reroll(_ quest: DBModel.Quest, in context: ModelContext) throws {}
     func claim(_ quest: DBModel.Quest, in context: ModelContext) throws {}
     func notifyCompletion(referenceID: UUID, in context: ModelContext) {}
+    func notifyCommonFieldTend(in context: ModelContext) {}
     func checkFarmQuests(in context: ModelContext) {}
     func refreshTodaysCommonFieldSlots(in context: ModelContext) {}
     @discardableResult
