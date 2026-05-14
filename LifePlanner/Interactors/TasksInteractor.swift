@@ -44,6 +44,7 @@ final class RealTasksInteractor: TasksInteractor {
         )
         context.insert(task)
         syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: task.isDone)
+        Swift.Task.detached { await SpotlightIndexer.shared.index(task: task) }
     }
 
     func update(_ task: DBModel.Task, with draft: TaskDraft, in context: ModelContext) {
@@ -56,6 +57,7 @@ final class RealTasksInteractor: TasksInteractor {
         task.tags = draft.tags
         task.updatedAt = Date()
         syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: task.isDone)
+        Swift.Task.detached { await SpotlightIndexer.shared.index(task: task) }
     }
 
     func toggleDone(_ task: DBModel.Task, in context: ModelContext) {
@@ -68,13 +70,18 @@ final class RealTasksInteractor: TasksInteractor {
             quests.notifyCompletion(referenceID: task.id, in: context)
             quests.checkFarmQuests(in: context)
             quests.trackMatureTransitions(count: matured, in: context)
+            let id = task.id
+            Swift.Task.detached { await SpotlightIndexer.shared.remove(taskID: id) }
         } else {
             syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: false)
+            Swift.Task.detached { await SpotlightIndexer.shared.index(task: task) }
         }
     }
 
     func delete(_ task: DBModel.Task, in context: ModelContext) {
         cancelReminder(id: task.id)
+        let id = task.id
+        Swift.Task.detached { await SpotlightIndexer.shared.remove(taskID: id) }
         context.delete(task)
     }
 
