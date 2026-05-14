@@ -142,9 +142,16 @@ private struct TaskRow: View {
                 .font(.caption.weight(.bold))
                 .frame(width: 16)
             VStack(alignment: .leading, spacing: 2) {
-                Text(task.title)
-                    .strikethrough(task.isDone)
-                    .foregroundStyle(task.isDone ? .secondary : .primary)
+                HStack(spacing: 4) {
+                    Text(task.title)
+                        .strikethrough(task.isDone)
+                        .foregroundStyle(task.isDone ? .secondary : .primary)
+                    if task.recurrence != nil {
+                        Image(systemName: "repeat")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 if let due = task.dueDate {
                     Text(due, format: .dateTime.month(.abbreviated).day().hour().minute())
                         .font(.caption)

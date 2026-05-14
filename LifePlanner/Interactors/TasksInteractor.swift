@@ -7,6 +7,7 @@ struct TaskDraft {
     var dueDate: Date? = nil
     var priority: TaskPriority = .normal
     var tags: [String] = []
+    var recurrence: TaskRecurrence? = nil
 }
 
 protocol TasksInteractor {
@@ -18,15 +19,18 @@ protocol TasksInteractor {
 
 final class RealTasksInteractor: TasksInteractor {
 
+    private let calendar: Calendar
     private let scheduler: NotificationScheduler
     private let farm: FarmInteractor
     private let quests: QuestInteractor
 
     init(
+        calendar: Calendar = .current,
         scheduler: NotificationScheduler = RealNotificationScheduler(),
         farm: FarmInteractor = StubFarmInteractor(),
         quests: QuestInteractor = StubQuestInteractor()
     ) {
+        self.calendar = calendar
         self.scheduler = scheduler
         self.farm = farm
         self.quests = quests
@@ -40,7 +44,8 @@ final class RealTasksInteractor: TasksInteractor {
             notes: draft.notes?.nilIfBlank,
             dueDate: draft.dueDate,
             priority: draft.priority,
-            tags: draft.tags
+            tags: draft.tags,
+            recurrence: draft.recurrence
         )
         context.insert(task)
         syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: task.isDone)
@@ -57,6 +62,7 @@ final class RealTasksInteractor: TasksInteractor {
         task.dueDate = draft.dueDate
         task.priority = draft.priority
         task.tags = draft.tags
+        task.recurrence = draft.recurrence
         task.updatedAt = Date()
         syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: task.isDone)
         Swift.Task.detached { await SpotlightIndexer.shared.index(task: task) }
@@ -76,6 +82,9 @@ final class RealTasksInteractor: TasksInteractor {
             quests.trackMatureTransitions(count: matured, in: context)
             let id = task.id
             Swift.Task.detached { await SpotlightIndexer.shared.remove(taskID: id) }
+            if let recurrence = task.recurrence, let dueDate = task.dueDate {
+                spawnNextOccurrence(of: task, recurrence: recurrence, from: dueDate, in: context)
+            }
         } else {
             syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: false)
             Swift.Task.detached { await SpotlightIndexer.shared.index(task: task) }
@@ -89,6 +98,25 @@ final class RealTasksInteractor: TasksInteractor {
         Swift.Task.detached { await SpotlightIndexer.shared.remove(taskID: id) }
         context.delete(task)
         context.saveQuietly()
+    }
+
+    private func spawnNextOccurrence(of task: DBModel.Task, recurrence: TaskRecurrence, from dueDate: Date, in context: ModelContext) {
+        let nextDue = recurrence.nextDate(after: dueDate, calendar: calendar)
+        let next = DBModel.Task(
+            title: task.title,
+            notes: task.notes,
+            dueDate: nextDue,
+            priority: task.priority,
+            tags: task.tags,
+            recurrence: recurrence
+        )
+        context.insert(next)
+        if let linkedGoals = task.goals, !linkedGoals.isEmpty {
+            next.goals = linkedGoals
+        }
+        syncReminder(id: next.id, title: next.title, dueDate: next.dueDate, isDone: false)
+        Swift.Task.detached { await SpotlightIndexer.shared.index(task: next) }
+        quests.refreshTodaysCommonFieldSlots(in: context)
     }
 
     private func syncReminder(id: UUID, title: String, dueDate: Date?, isDone: Bool) {
