@@ -711,6 +711,74 @@ final class LifePlannerTests: XCTestCase {
         XCTAssertEqual(economy.balance(in: context), goldBefore + harvestQuest.goldReward)
     }
 
+    // MARK: - Weekly harvest quest
+
+    @MainActor
+    func test_weeklyQuest_rollsOnce() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let quests = RealQuestInteractor(economy: economy)
+
+        let q1 = quests.rollWeekly(on: Date(), in: context)
+        let q2 = quests.rollWeekly(on: Date(), in: context)
+        try context.save()
+
+        XCTAssertNotNil(q1, "weekly quest created on first roll")
+        XCTAssertEqual(q1?.id, q2?.id, "second call returns same quest — idempotent")
+        let all = try context.fetch(FetchDescriptor<DBModel.Quest>(
+            predicate: #Predicate { $0.slot == 3 }
+        ))
+        XCTAssertEqual(all.count, 1, "only one weekly quest slot per week")
+    }
+
+    @MainActor
+    func test_weeklyQuest_tracksProgress() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let quests = RealQuestInteractor(economy: economy)
+
+        let quest = try XCTUnwrap(quests.rollWeekly(on: Date(), in: context))
+        try context.save()
+        XCTAssertEqual(quest.progress, 0)
+
+        quests.trackMatureTransitions(count: 3, in: context)
+        try context.save()
+
+        XCTAssertEqual(quest.progress, 3, "progress incremented by 3")
+        XCTAssertEqual(quest.state, .active, "not yet claimed — target is \(quest.progressTarget)")
+    }
+
+    @MainActor
+    func test_weeklyQuest_autoClaimsAtTarget() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let farm = RealFarmInteractor(economy: economy)
+        let quests = RealQuestInteractor(economy: economy)
+        farm.bootstrap(in: context)
+
+        let weekQuest = try XCTUnwrap(quests.rollWeekly(on: Date(), in: context))
+        let target = weekQuest.progressTarget
+        let goldBefore = economy.balance(in: context)
+        try context.save()
+
+        // Increment to one below target — quest still active.
+        quests.trackMatureTransitions(count: target - 1, in: context)
+        try context.save()
+        XCTAssertEqual(weekQuest.progress, target - 1)
+        XCTAssertEqual(weekQuest.state, .active, "not yet claimed")
+
+        // Final transition reaches target — auto-claim fires.
+        quests.trackMatureTransitions(count: 1, in: context)
+        try context.save()
+
+        XCTAssertEqual(weekQuest.state, .completed, "weekly quest auto-claimed at target")
+        XCTAssertEqual(
+            economy.balance(in: context),
+            goldBefore + weekQuest.goldReward,
+            "weekly reward credited"
+        )
+    }
+
     // MARK: - archiveAndDelete (existing test, just moved after new tests)
 
     @MainActor

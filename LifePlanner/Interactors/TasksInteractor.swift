@@ -64,9 +64,10 @@ final class RealTasksInteractor: TasksInteractor {
         task.updatedAt = Date()
         if task.isDone {
             cancelReminder(id: task.id)
-            farm.applyTaskCompletion(task, in: context)
+            let matured = farm.applyTaskCompletion(task, in: context)
             quests.notifyCompletion(referenceID: task.id, in: context)
             quests.checkFarmQuests(in: context)
+            quests.trackMatureTransitions(count: matured, in: context)
         } else {
             syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: false)
         }

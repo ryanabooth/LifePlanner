@@ -104,9 +104,10 @@ final class RealHabitsInteractor: HabitsInteractor {
                 habit: habit
             )
             context.insert(entry)
-            farm.applyHabitCompletion(habit, in: context)
+            let matured = farm.applyHabitCompletion(habit, in: context)
             quests.notifyCompletion(referenceID: habit.id, in: context)
             quests.checkFarmQuests(in: context)
+            quests.trackMatureTransitions(count: matured, in: context)
         }
         habit.updatedAt = Date()
         recomputeStreak(for: habit, on: day)
