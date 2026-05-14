@@ -19,9 +19,14 @@ protocol TasksInteractor {
 final class RealTasksInteractor: TasksInteractor {
 
     private let scheduler: NotificationScheduler
+    private let farm: FarmInteractor
 
-    init(scheduler: NotificationScheduler = RealNotificationScheduler()) {
+    init(
+        scheduler: NotificationScheduler = RealNotificationScheduler(),
+        farm: FarmInteractor = StubFarmInteractor()
+    ) {
         self.scheduler = scheduler
+        self.farm = farm
     }
 
     func add(_ draft: TaskDraft, in context: ModelContext) {
@@ -56,6 +61,7 @@ final class RealTasksInteractor: TasksInteractor {
         task.updatedAt = Date()
         if task.isDone {
             cancelReminder(id: task.id)
+            farm.applyTaskCompletion(task, in: context)
         } else {
             syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: false)
         }

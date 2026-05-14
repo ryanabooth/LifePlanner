@@ -5,6 +5,8 @@ import SwiftData
 actor FakeNotificationScheduler: NotificationScheduler {
     private(set) var scheduled: [(id: UUID, title: String, time: Date)] = []
     private(set) var cancelled: [UUID] = []
+    private(set) var scheduledTasks: [(id: UUID, title: String, fireDate: Date)] = []
+    private(set) var cancelledTasks: [UUID] = []
 
     func scheduleHabitReminder(habitID: UUID, title: String, time: Date) async {
         scheduled.append((habitID, title, time))
@@ -12,6 +14,14 @@ actor FakeNotificationScheduler: NotificationScheduler {
 
     func cancelHabitReminder(habitID: UUID) async {
         cancelled.append(habitID)
+    }
+
+    func scheduleTaskDue(taskID: UUID, title: String, at fireDate: Date) async {
+        scheduledTasks.append((taskID, title, fireDate))
+    }
+
+    func cancelTaskDue(taskID: UUID) async {
+        cancelledTasks.append(taskID)
     }
 }
 
@@ -179,6 +189,197 @@ final class LifePlannerTests: XCTestCase {
         let cancelledAfter = await scheduler.cancelled
         XCTAssertEqual(cancelledAfter.count, 2)
         XCTAssertTrue(cancelledAfter.allSatisfy { $0 == habit.id })
+    }
+
+    // MARK: - Economy + Farm
+
+    @MainActor
+    private func makeFarmContext() throws -> ModelContext {
+        let container = try ModelContainer(
+            for: DBModel.FarmState.self, DBModel.FarmPlot.self, DBModel.Goal.self,
+                DBModel.Task.self, DBModel.Habit.self, DBModel.HabitLogEntry.self,
+                DBModel.Quest.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        return ModelContext(container)
+    }
+
+    @MainActor
+    func test_economy_creditAndSpend() throws {
+        let context = try makeFarmContext()
+        let farm = RealFarmInteractor()
+        farm.bootstrap(in: context)
+        let economy = RealEconomyInteractor()
+
+        XCTAssertEqual(economy.balance(in: context), 0)
+        economy.credit(50, reason: "test", in: context)
+        XCTAssertEqual(economy.balance(in: context), 50)
+
+        try economy.spend(20, reason: "test", in: context)
+        XCTAssertEqual(economy.balance(in: context), 30)
+
+        XCTAssertThrowsError(try economy.spend(999, reason: "test", in: context)) { error in
+            guard case EconomyError.insufficientGold(let have, let need) = error else {
+                return XCTFail("expected insufficientGold, got \(error)")
+            }
+            XCTAssertEqual(have, 30)
+            XCTAssertEqual(need, 999)
+        }
+        XCTAssertEqual(economy.balance(in: context), 30, "balance unchanged on failed spend")
+    }
+
+    @MainActor
+    func test_farm_bootstrapIsIdempotent() throws {
+        let context = try makeFarmContext()
+        let farm = RealFarmInteractor()
+        farm.bootstrap(in: context)
+        farm.bootstrap(in: context)
+        farm.bootstrap(in: context)
+
+        let states = try context.fetch(FetchDescriptor<DBModel.FarmState>())
+        XCTAssertEqual(states.count, 1, "exactly one FarmState row")
+
+        let plots = try context.fetch(FetchDescriptor<DBModel.FarmPlot>())
+        XCTAssertEqual(plots.count, 1)
+        XCTAssertEqual(plots.first?.kind, .commonField)
+    }
+
+    @MainActor
+    func test_farm_bindPlot_allocatesAndCapacityCaps() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let farm = RealFarmInteractor(economy: economy)
+        let goals = RealGoalsInteractor(farm: farm)
+        farm.bootstrap(in: context)
+
+        // Default plotCapacity is 3 — first three add() calls succeed.
+        for index in 0..<3 {
+            goals.add(GoalDraft(title: "Goal \(index)", farmElementType: .animal), in: context)
+        }
+        try context.save()
+
+        let allGoals = try context.fetch(FetchDescriptor<DBModel.Goal>())
+        XCTAssertEqual(allGoals.count, 3)
+        XCTAssertTrue(allGoals.allSatisfy { $0.plot != nil }, "all goals bound to a plot")
+
+        // The 4th add() saves the goal but silently fails to bind a plot.
+        goals.add(GoalDraft(title: "Overflow", farmElementType: .tree), in: context)
+        try context.save()
+        let after = try context.fetch(FetchDescriptor<DBModel.Goal>())
+        let overflow = try XCTUnwrap(after.first { $0.title == "Overflow" })
+        XCTAssertNil(overflow.plot, "over-capacity goal has no plot")
+
+        // Bumping capacity then retrying succeeds.
+        economy.credit(100, reason: "test", in: context)
+        try farm.purchaseCapacity(in: context)
+        try farm.bindPlot(to: overflow, in: context)
+        XCTAssertNotNil(overflow.plot)
+        XCTAssertEqual(overflow.plot?.kind, .tree)
+    }
+
+    @MainActor
+    func test_farm_habitCompletionContributesToBoundPlot() throws {
+        let context = try makeFarmContext()
+        let farm = RealFarmInteractor()
+        let goals = RealGoalsInteractor(farm: farm)
+        let habits = RealHabitsInteractor(scheduler: StubNotificationScheduler(), farm: farm)
+        farm.bootstrap(in: context)
+
+        goals.add(GoalDraft(title: "Read", farmElementType: .crop), in: context)
+        habits.add(HabitDraft(title: "Read 10 pages"), in: context)
+        try context.save()
+
+        let goal = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Goal>()).first)
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+        goals.setLinks(goal, tasks: [], habits: [habit], in: context)
+        try context.save()
+
+        let initialHealth = try XCTUnwrap(goal.plot?.health)
+        habits.toggleDone(habit, on: Date(), in: context)
+        try context.save()
+
+        let after = try XCTUnwrap(goal.plot?.health)
+        XCTAssertEqual(after, min(100, initialHealth + FarmTuning.habitContribution))
+    }
+
+    @MainActor
+    func test_farm_unlinkedHabitFeedsCommonField() throws {
+        let context = try makeFarmContext()
+        let farm = RealFarmInteractor()
+        let habits = RealHabitsInteractor(scheduler: StubNotificationScheduler(), farm: farm)
+        farm.bootstrap(in: context)
+
+        habits.add(HabitDraft(title: "Stretch"), in: context)
+        try context.save()
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+
+        // Common field bootstraps at health=100 — knock it down so we can see a delta.
+        let plots = try context.fetch(FetchDescriptor<DBModel.FarmPlot>())
+        let common = try XCTUnwrap(plots.first { $0.kind == .commonField })
+        common.health = 50
+
+        habits.toggleDone(habit, on: Date(), in: context)
+        try context.save()
+        XCTAssertEqual(common.health, 50 + FarmTuning.commonFieldContribution)
+    }
+
+    @MainActor
+    func test_farm_decayWithersThenKillsPlot() throws {
+        let context = try makeFarmContext()
+        let calendar = Calendar.current
+        let farm = RealFarmInteractor(calendar: calendar)
+        let goals = RealGoalsInteractor(farm: farm)
+        farm.bootstrap(in: context)
+        goals.add(GoalDraft(title: "Decay subject", farmElementType: .crop), in: context)
+        try context.save()
+        let goal = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Goal>()).first)
+        let plot = try XCTUnwrap(goal.plot)
+
+        // Force the lastDecayTick into the past so applyDailyDecay sees days elapsed.
+        var fetchState = FetchDescriptor<DBModel.FarmState>()
+        fetchState.fetchLimit = 1
+        let state = try XCTUnwrap(try context.fetch(fetchState).first)
+        let now = Date()
+        // Seed decay tick; simulate 10 elapsed days to fully drain a plot at health=50 with 10/day decay.
+        state.lastDecayTick = calendar.date(byAdding: .day, value: -10, to: now)
+        plot.lastContribution = calendar.date(byAdding: .day, value: -10, to: now)
+        try context.save()
+
+        farm.applyDailyDecay(now: now, in: context)
+        XCTAssertEqual(plot.health, 0)
+        XCTAssertEqual(plot.state, .withered, "health 0 transitions to withered first")
+
+        // Push lastContribution further back so the wither-to-dead window has elapsed,
+        // then run another decay tick a day later.
+        state.lastDecayTick = calendar.date(byAdding: .day, value: -1, to: now)
+        plot.lastContribution = calendar.date(byAdding: .day, value: -10, to: now)
+        farm.applyDailyDecay(now: now, in: context)
+        XCTAssertEqual(plot.state, .dead, "withered too long becomes dead")
+    }
+
+    @MainActor
+    func test_farm_replantRequiresDeadPlotAndCostsGold() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let farm = RealFarmInteractor(economy: economy)
+        let goals = RealGoalsInteractor(farm: farm)
+        farm.bootstrap(in: context)
+        goals.add(GoalDraft(title: "Subject", farmElementType: .crop), in: context)
+        let goal = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Goal>()).first)
+        let plot = try XCTUnwrap(goal.plot)
+
+        XCTAssertThrowsError(try farm.replant(plot, in: context)) { error in
+            XCTAssertTrue(error is FarmError)
+        }
+
+        // Force the plot dead, then replant.
+        plot.state = .dead
+        XCTAssertThrowsError(try farm.replant(plot, in: context), "no gold yet")
+        economy.credit(FarmTuning.replantCost, reason: "test", in: context)
+        try farm.replant(plot, in: context)
+        XCTAssertEqual(plot.state, .growing)
+        XCTAssertEqual(plot.health, FarmTuning.initialHealth)
+        XCTAssertEqual(economy.balance(in: context), 0)
     }
 
     @MainActor

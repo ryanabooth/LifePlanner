@@ -22,13 +22,17 @@ extension DIContainer {
         let tasks: TasksInteractor
         let habits: HabitsInteractor
         let goals: GoalsInteractor
+        let economy: EconomyInteractor
+        let farm: FarmInteractor
 
         static var stub: Self {
             .init(
                 userPermissions: StubUserPermissionsInteractor(),
                 tasks: StubTasksInteractor(),
                 habits: StubHabitsInteractor(),
-                goals: StubGoalsInteractor()
+                goals: StubGoalsInteractor(),
+                economy: StubEconomyInteractor(),
+                farm: StubFarmInteractor()
             )
         }
     }

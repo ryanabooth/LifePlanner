@@ -14,8 +14,9 @@ extension AppEnvironment {
     static func bootstrap() -> AppEnvironment {
         let appState = Store<AppState>(AppState())
         let modelContainer = configuredModelContainer()
-        FarmBootstrap.seedSingletons(in: modelContainer.mainContext)
         let interactors = configuredInteractors(appState: appState)
+        // Farm singletons must exist before any UI binds against them. Idempotent.
+        interactors.farm.bootstrap(in: modelContainer.mainContext)
         let diContainer = DIContainer(appState: appState, interactors: interactors)
         let deepLinksHandler = RealDeepLinksHandler(container: diContainer)
         let pushNotificationsHandler = RealPushNotificationsHandler(deepLinksHandler: deepLinksHandler)
@@ -47,14 +48,20 @@ extension AppEnvironment {
                     UIApplication.shared.open($0, options: [:], completionHandler: nil)
                 }
             })
-        let tasks = RealTasksInteractor()
-        let habits = RealHabitsInteractor()
-        let goals = RealGoalsInteractor()
+        // Economy and Farm are shared singletons — Habits / Tasks / Goals interactors
+        // all reference the same Farm instance so contribution routing is consistent.
+        let economy = RealEconomyInteractor()
+        let farm = RealFarmInteractor(economy: economy)
+        let tasks = RealTasksInteractor(farm: farm)
+        let habits = RealHabitsInteractor(farm: farm)
+        let goals = RealGoalsInteractor(farm: farm)
         return .init(
             userPermissions: userPermissions,
             tasks: tasks,
             habits: habits,
-            goals: goals
+            goals: goals,
+            economy: economy,
+            farm: farm
         )
     }
 }
