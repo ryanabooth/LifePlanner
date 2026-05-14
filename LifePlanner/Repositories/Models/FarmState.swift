@@ -8,7 +8,10 @@ extension DBModel {
     @Model
     final class FarmState {
         var id: UUID = UUID()
-        var gold: Int = 0
+        /// Starting balance for fresh installs. Lightweight-migration default
+        /// — existing FarmState rows keep their current `gold` value, only
+        /// freshly-inserted rows pick this up.
+        var gold: Int = 100
         var plotCapacity: Int = 3
         /// Start-of-day timestamp for the most recent decay run. nil = no tick yet.
         var lastDecayTick: Date? = nil
@@ -17,7 +20,7 @@ extension DBModel {
 
         init(
             id: UUID = UUID(),
-            gold: Int = 0,
+            gold: Int = 100,
             plotCapacity: Int = 3,
             lastDecayTick: Date? = nil,
             createdAt: Date = Date(),
