@@ -53,10 +53,12 @@ extension AppEnvironment {
         // interactors all reference the same instances so contribution routing
         // and quest auto-claim are consistent across entry points.
         let economy = RealEconomyInteractor()
-        let farm = RealFarmInteractor(economy: economy)
+        let scheduler = RealNotificationScheduler()
+        let farm = RealFarmInteractor(economy: economy, scheduler: scheduler)
         let quests = RealQuestInteractor(economy: economy)
-        let tasks = RealTasksInteractor(farm: farm, quests: quests)
-        let habits = RealHabitsInteractor(farm: farm, quests: quests)
+        let tasks = RealTasksInteractor(scheduler: scheduler, farm: farm, quests: quests)
+        let habits = RealHabitsInteractor(
+            scheduler: scheduler, economy: economy, farm: farm, quests: quests)
         let goals = RealGoalsInteractor(farm: farm)
         let cosmetics = RealCosmeticInteractor(economy: economy)
         return .init(

@@ -9,6 +9,8 @@ enum QuestError: Error {
 
 enum QuestTuning {
     static let slotsPerDay = 3
+    /// Slot index reserved for the weekly bonus quest.
+    static let weeklySlot = 3
 
     static let taskBaseReward = 5
     static let taskPriorityBonus: [TaskPriority: Int] = [
@@ -18,6 +20,12 @@ enum QuestTuning {
     ]
     static let habitReward = 5
     static let commonFieldReward = 3
+    static let harvestMatureThreshold = 2
+    static let harvestMatureReward = 15
+
+    /// Weekly quest: push this many plots to mature during the week to claim.
+    static let weeklyHarvestTarget = 5
+    static let weeklyHarvestReward = 30
 
     static let rerollBaseCost = 3
     static let rerollCostStep = 2
@@ -44,6 +52,19 @@ protocol QuestInteractor {
     /// Called from Habits/Tasks `toggleDone` so completion in any UI surface
     /// pays out without an explicit claim step.
     func notifyCompletion(referenceID: UUID, in context: ModelContext)
+
+    /// Auto-claim any active `harvestMature` quests whose farm-state condition
+    /// is now satisfied. Called after every farm contribution.
+    func checkFarmQuests(in context: ModelContext)
+
+    /// Roll the weekly harvest quest for the ISO week containing `day`.
+    /// Idempotent — does nothing if a slot-3 quest already exists this week.
+    @discardableResult
+    func rollWeekly(on day: Date, in context: ModelContext) -> DBModel.Quest?
+
+    /// Increment progress on the active weekly harvest quest by `count` newly-matured
+    /// plots. Auto-claims the quest once progress reaches `progressTarget`.
+    func trackMatureTransitions(count: Int, in context: ModelContext)
 
     /// Set state = .expired on every still-active quest dated before `day`.
     func expireOldQuests(on day: Date, in context: ModelContext)
@@ -137,6 +158,49 @@ final class RealQuestInteractor: QuestInteractor {
         Task { @MainActor in SoundPlayer.shared.play(.questClaim) }
     }
 
+    // MARK: - checkFarmQuests
+
+    func checkFarmQuests(in context: ModelContext) {
+        let today = calendar.startOfDay(for: Date())
+        let todays = fetchQuests(on: today, in: context)
+        for quest in todays where quest.state == .active && quest.kind == .harvestMature {
+            if isSatisfied(quest, in: context) { credit(quest, in: context) }
+        }
+    }
+
+    // MARK: - rollWeekly
+
+    @discardableResult
+    func rollWeekly(on day: Date, in context: ModelContext) -> DBModel.Quest? {
+        let start = weekStart(for: day)
+        let existing = fetchWeeklyQuests(weekStart: start, in: context)
+        guard existing.isEmpty else { return existing.first }
+        let quest = DBModel.Quest(
+            day: start,
+            slot: QuestTuning.weeklySlot,
+            kind: .weeklyHarvest,
+            goldReward: QuestTuning.weeklyHarvestReward,
+            progressTarget: QuestTuning.weeklyHarvestTarget
+        )
+        context.insert(quest)
+        return quest
+    }
+
+    // MARK: - trackMatureTransitions
+
+    func trackMatureTransitions(count: Int, in context: ModelContext) {
+        guard count > 0 else { return }
+        let start = weekStart(for: Date())
+        for quest in fetchWeeklyQuests(weekStart: start, in: context)
+            where quest.state == .active && quest.kind == .weeklyHarvest {
+            quest.progress = min(quest.progress + count, quest.progressTarget)
+            quest.updatedAt = Date()
+            if quest.progress >= quest.progressTarget {
+                credit(quest, in: context)
+            }
+        }
+    }
+
     // MARK: - expireOldQuests
 
     func expireOldQuests(on day: Date, in context: ModelContext) {
@@ -155,6 +219,7 @@ final class RealQuestInteractor: QuestInteractor {
         case task(DBModel.Task)
         case habit(DBModel.Habit)
         case commonField
+        case harvestMature
     }
 
     private func candidatePool(
@@ -182,6 +247,16 @@ final class RealQuestInteractor: QuestInteractor {
             if !habit.isDone(on: today, calendar: calendar) {
                 pool.append(.habit(habit))
             }
+        }
+
+        // harvestMature: include when the user has enough living goal plots that
+        // reaching the threshold is plausible, and today doesn't already have one.
+        let allPlots = (try? context.fetch(FetchDescriptor<DBModel.FarmPlot>())) ?? []
+        let livingGoalPlots = allPlots.filter { $0.kind != .commonField && $0.state != .dead }
+        let todayAlreadyHasHarvest = fetchQuests(on: today, in: context)
+            .contains { $0.kind == .harvestMature }
+        if livingGoalPlots.count >= QuestTuning.harvestMatureThreshold, !todayAlreadyHasHarvest {
+            pool.append(.harvestMature)
         }
 
         return pool
@@ -219,6 +294,10 @@ final class RealQuestInteractor: QuestInteractor {
             quest.kind = .commonFieldTend
             quest.referenceID = nil
             quest.goldReward = QuestTuning.commonFieldReward
+        case .harvestMature:
+            quest.kind = .harvestMature
+            quest.referenceID = nil
+            quest.goldReward = QuestTuning.harvestMatureReward
         }
     }
 
@@ -244,6 +323,14 @@ final class RealQuestInteractor: QuestInteractor {
             let plots = (try? context.fetch(FetchDescriptor<DBModel.FarmPlot>())) ?? []
             return plots.first { $0.kind == .commonField }?
                 .health ?? 0 >= FarmTuning.matureThreshold
+        case .harvestMature:
+            let plots = (try? context.fetch(FetchDescriptor<DBModel.FarmPlot>())) ?? []
+            let matureCount = plots.filter {
+                $0.kind != .commonField && $0.state == .mature
+            }.count
+            return matureCount >= QuestTuning.harvestMatureThreshold
+        case .weeklyHarvest:
+            return quest.progress >= quest.progressTarget
         }
     }
 
@@ -257,6 +344,20 @@ final class RealQuestInteractor: QuestInteractor {
         )
         return (try? context.fetch(fetch)) ?? []
     }
+
+    private func fetchWeeklyQuests(weekStart: Date, in context: ModelContext) -> [DBModel.Quest] {
+        let weekEnd = calendar.date(byAdding: .weekOfYear, value: 1, to: weekStart) ?? weekStart
+        let slot = QuestTuning.weeklySlot
+        let fetch = FetchDescriptor<DBModel.Quest>(
+            predicate: #Predicate { $0.slot == slot && $0.day >= weekStart && $0.day < weekEnd }
+        )
+        return (try? context.fetch(fetch)) ?? []
+    }
+
+    private func weekStart(for date: Date) -> Date {
+        let comps = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
+        return calendar.date(from: comps) ?? calendar.startOfDay(for: date)
+    }
 }
 
 final class StubQuestInteractor: QuestInteractor {
@@ -265,5 +366,9 @@ final class StubQuestInteractor: QuestInteractor {
     func reroll(_ quest: DBModel.Quest, in context: ModelContext) throws {}
     func claim(_ quest: DBModel.Quest, in context: ModelContext) throws {}
     func notifyCompletion(referenceID: UUID, in context: ModelContext) {}
+    func checkFarmQuests(in context: ModelContext) {}
+    @discardableResult
+    func rollWeekly(on day: Date, in context: ModelContext) -> DBModel.Quest? { nil }
+    func trackMatureTransitions(count: Int, in context: ModelContext) {}
     func expireOldQuests(on day: Date, in context: ModelContext) {}
 }

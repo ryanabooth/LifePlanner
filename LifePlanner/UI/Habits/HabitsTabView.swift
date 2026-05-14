@@ -110,6 +110,9 @@ private struct HabitRow: View {
                             if habit.reminderTime != nil {
                                 Image(systemName: "bell.fill")
                             }
+                            if habit.currentStreak >= 2 {
+                                Text("🔥 \(habit.currentStreak)")
+                            }
                         }
                         .font(.caption)
                         .foregroundStyle(.secondary)

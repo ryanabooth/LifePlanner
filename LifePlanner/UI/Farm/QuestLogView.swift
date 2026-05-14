@@ -23,6 +23,17 @@ struct QuestLogView: View {
         return allQuests.filter { $0.day >= today && $0.day < tomorrow }
     }
 
+    private var weeklyQuest: DBModel.Quest? {
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+        guard let weekStart = cal.date(from: comps),
+              let weekEnd = cal.date(byAdding: .weekOfYear, value: 1, to: weekStart)
+        else { return nil }
+        return allQuests.first {
+            $0.slot == QuestTuning.weeklySlot && $0.day >= weekStart && $0.day < weekEnd
+        }
+    }
+
     private var gold: Int { farmStates.first?.gold ?? 0 }
 
     var body: some View {
@@ -55,6 +66,19 @@ struct QuestLogView: View {
                     Text("Today's Quests")
                 } footer: {
                     Text("Completing the underlying task or habit auto-claims the matching quest. Re-roll a slot to swap it for a different ask — cost grows each time.")
+                }
+
+                Section {
+                    if let wq = weeklyQuest {
+                        WeeklyQuestRow(quest: wq)
+                    } else {
+                        Text("Weekly quest not rolled yet — open the app tomorrow.")
+                            .foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("This Week")
+                } footer: {
+                    Text("Push \(QuestTuning.weeklyHarvestTarget) plots to mature this week to claim the bonus reward.")
                 }
             }
             .navigationTitle("Quests")
@@ -125,7 +149,63 @@ private struct QuestRow: View {
             return "🔄 Log: \(habitTitle ?? "(missing habit)")"
         case .commonFieldTend:
             return "🌼 Tend the common field"
+        case .harvestMature:
+            return "🌾 Grow \(QuestTuning.harvestMatureThreshold)+ mature plots"
+        case .weeklyHarvest:
+            return "🌾 Harvest \(quest.progressTarget) mature plots this week"
         }
+    }
+
+    @ViewBuilder
+    private var stateBadge: some View {
+        switch quest.state {
+        case .active:
+            EmptyView()
+        case .completed:
+            Text("Claimed")
+                .font(.caption2)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.green.opacity(0.2), in: Capsule())
+                .foregroundStyle(.green)
+        case .expired:
+            Text("Expired")
+                .font(.caption2)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Color.gray.opacity(0.2), in: Capsule())
+                .foregroundStyle(.gray)
+        }
+    }
+}
+
+private struct WeeklyQuestRow: View {
+    let quest: DBModel.Quest
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("🌾 Harvest \(quest.progressTarget) mature plots this week")
+                    .font(.body)
+                    .strikethrough(quest.state == .completed)
+                Spacer()
+                stateBadge
+            }
+            if quest.state == .active {
+                ProgressView(
+                    value: Double(quest.progress),
+                    total: Double(max(quest.progressTarget, 1))
+                )
+                .tint(.green)
+                Text("\(quest.progress) / \(quest.progressTarget) mature transitions")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Text("🪙 \(quest.goldReward)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 4)
     }
 
     @ViewBuilder

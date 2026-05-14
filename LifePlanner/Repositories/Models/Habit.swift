@@ -22,6 +22,13 @@ extension DBModel {
         var frequency: HabitFrequency = HabitFrequency.daily
         var reminderTime: Date? = nil
         var archived: Bool = false
+        /// Number of consecutive days this habit has been logged ending today (or
+        /// the last day it was toggled). Recomputed by `HabitsInteractor.toggleDone`.
+        var currentStreak: Int = 0
+        var longestStreak: Int = 0
+        /// The highest streak-milestone day-count that has already been credited
+        /// with a gold bonus. Prevents awarding the same milestone twice.
+        var lastStreakMilestone: Int = 0
         var createdAt: Date = Date()
         var updatedAt: Date = Date()
 
@@ -37,6 +44,9 @@ extension DBModel {
             frequency: HabitFrequency = .daily,
             reminderTime: Date? = nil,
             archived: Bool = false,
+            currentStreak: Int = 0,
+            longestStreak: Int = 0,
+            lastStreakMilestone: Int = 0,
             createdAt: Date = Date(),
             updatedAt: Date = Date()
         ) {
@@ -46,6 +56,9 @@ extension DBModel {
             self.frequency = frequency
             self.reminderTime = reminderTime
             self.archived = archived
+            self.currentStreak = currentStreak
+            self.longestStreak = longestStreak
+            self.lastStreakMilestone = lastStreakMilestone
             self.createdAt = createdAt
             self.updatedAt = updatedAt
         }

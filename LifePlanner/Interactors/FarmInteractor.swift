@@ -62,12 +62,16 @@ protocol FarmInteractor {
     /// Convenience: route a contribution from a habit. Each linked goal's plot
     /// receives `habitContribution`. If the habit has no linked goals, the
     /// common field receives `commonFieldContribution` instead.
-    func applyHabitCompletion(_ habit: DBModel.Habit, in context: ModelContext)
+    /// Returns the number of plots that newly reached the mature threshold.
+    @discardableResult
+    func applyHabitCompletion(_ habit: DBModel.Habit, in context: ModelContext) -> Int
 
     /// Convenience: route a contribution from a task. Linked goal plots get
     /// `taskBaseContribution + priority bonus`; unlinked tasks pump the
     /// common field.
-    func applyTaskCompletion(_ task: DBModel.Task, in context: ModelContext)
+    /// Returns the number of plots that newly reached the mature threshold.
+    @discardableResult
+    func applyTaskCompletion(_ task: DBModel.Task, in context: ModelContext) -> Int
 
     /// Apply decay for every whole day elapsed since `FarmState.lastDecayTick`.
     /// Idempotent within the same calendar day.
@@ -83,13 +87,16 @@ protocol FarmInteractor {
 final class RealFarmInteractor: FarmInteractor {
 
     private let economy: EconomyInteractor
+    private let scheduler: NotificationScheduler
     private let calendar: Calendar
 
     init(
         economy: EconomyInteractor = RealEconomyInteractor(),
+        scheduler: NotificationScheduler = StubNotificationScheduler(),
         calendar: Calendar = .current
     ) {
         self.economy = economy
+        self.scheduler = scheduler
         self.calendar = calendar
     }
 
@@ -170,28 +177,39 @@ final class RealFarmInteractor: FarmInteractor {
         applyContribution(amount: amount, to: common)
     }
 
-    func applyHabitCompletion(_ habit: DBModel.Habit, in context: ModelContext) {
+    @discardableResult
+    func applyHabitCompletion(_ habit: DBModel.Habit, in context: ModelContext) -> Int {
         let goals = habit.goals ?? []
         if goals.isEmpty {
             applyContributionToCommonField(amount: FarmTuning.commonFieldContribution, in: context)
-        } else {
-            applyContribution(amount: FarmTuning.habitContribution, toGoals: goals, in: context)
+            return 0
+        }
+        return goals.reduce(0) { sum, goal in
+            guard let plot = goal.plot else { return sum }
+            return sum + (applyContribution(amount: FarmTuning.habitContribution, to: plot) ? 1 : 0)
         }
     }
 
-    func applyTaskCompletion(_ task: DBModel.Task, in context: ModelContext) {
+    @discardableResult
+    func applyTaskCompletion(_ task: DBModel.Task, in context: ModelContext) -> Int {
         let goals = task.goals ?? []
         let amount = FarmTuning.taskBaseContribution
             + (FarmTuning.taskPriorityBonus[task.priority] ?? 0)
         if goals.isEmpty {
             applyContributionToCommonField(amount: FarmTuning.commonFieldContribution, in: context)
-        } else {
-            applyContribution(amount: amount, toGoals: goals, in: context)
+            return 0
+        }
+        return goals.reduce(0) { sum, goal in
+            guard let plot = goal.plot else { return sum }
+            return sum + (applyContribution(amount: amount, to: plot) ? 1 : 0)
         }
     }
 
-    private func applyContribution(amount: Int, to plot: DBModel.FarmPlot) {
-        guard plot.state != .dead else { return } // dead plots need replant first
+    /// Returns `true` if this contribution caused the plot to newly reach mature.
+    @discardableResult
+    private func applyContribution(amount: Int, to plot: DBModel.FarmPlot) -> Bool {
+        guard plot.state != .dead else { return false }
+        let wasMature = plot.state == .mature
         plot.health = clamp(plot.health + amount)
         plot.lastContribution = Date()
         plot.updatedAt = Date()
@@ -201,6 +219,7 @@ final class RealFarmInteractor: FarmInteractor {
         } else if plot.state == .growing, plot.health >= FarmTuning.matureThreshold {
             plot.state = .mature
         }
+        return !wasMature && plot.state == .mature
     }
 
     // MARK: - Decay
@@ -234,6 +253,7 @@ final class RealFarmInteractor: FarmInteractor {
 
     private func decay(plot: DBModel.FarmPlot, days: Int) {
         guard plot.state != .dead else { return }
+        let prevState = plot.state
         let totalDecay = days * FarmTuning.decayPerDay
         plot.health = clamp(plot.health - totalDecay)
         plot.updatedAt = Date()
@@ -252,6 +272,37 @@ final class RealFarmInteractor: FarmInteractor {
         } else if plot.health < FarmTuning.matureThreshold, plot.state == .mature {
             plot.state = .growing
         }
+
+        schedulePlotNotificationIfNeeded(plot: plot, prevState: prevState)
+    }
+
+    private func schedulePlotNotificationIfNeeded(
+        plot: DBModel.FarmPlot,
+        prevState: PlotState
+    ) {
+        guard plot.kind != .commonField else { return }
+        let id = plot.id
+        let label = plot.kind.label
+
+        if prevState != .withered, plot.state == .withered {
+            Task.detached { [scheduler] in
+                await scheduler.schedulePlotAlert(
+                    plotID: id,
+                    title: "\(label) is wilting",
+                    body: "Log a habit or complete a task before it dies.",
+                    fireAt: Calendar.current.nextMorning
+                )
+            }
+        } else if prevState != .dead, plot.state == .dead {
+            Task.detached { [scheduler] in
+                await scheduler.schedulePlotAlert(
+                    plotID: id,
+                    title: "\(label) has died",
+                    body: "Open the app to replant it and get back on track.",
+                    fireAt: Calendar.current.nextMorning
+                )
+            }
+        }
     }
 
     // MARK: - Replant + upgrade
@@ -263,6 +314,8 @@ final class RealFarmInteractor: FarmInteractor {
         plot.state = .growing
         plot.lastContribution = Date()
         plot.updatedAt = Date()
+        let id = plot.id
+        Task.detached { [scheduler] in await scheduler.cancelPlotAlert(plotID: id) }
     }
 
     func purchaseCapacity(in context: ModelContext) throws {
@@ -286,14 +339,24 @@ final class RealFarmInteractor: FarmInteractor {
     }
 }
 
+private extension Calendar {
+    /// 9 AM tomorrow — used as the fire time for plot-health alerts.
+    var nextMorning: Date {
+        let tomorrow = date(byAdding: .day, value: 1, to: Date()) ?? Date()
+        return date(bySettingHour: 9, minute: 0, second: 0, of: tomorrow) ?? tomorrow
+    }
+}
+
 final class StubFarmInteractor: FarmInteractor {
     func bootstrap(in context: ModelContext) {}
     func bindPlot(to goal: DBModel.Goal, in context: ModelContext) throws {}
     @discardableResult
     func applyContribution(amount: Int, toGoals goals: [DBModel.Goal], in context: ModelContext) -> Int { 0 }
     func applyContributionToCommonField(amount: Int, in context: ModelContext) {}
-    func applyHabitCompletion(_ habit: DBModel.Habit, in context: ModelContext) {}
-    func applyTaskCompletion(_ task: DBModel.Task, in context: ModelContext) {}
+    @discardableResult
+    func applyHabitCompletion(_ habit: DBModel.Habit, in context: ModelContext) -> Int { 0 }
+    @discardableResult
+    func applyTaskCompletion(_ task: DBModel.Task, in context: ModelContext) -> Int { 0 }
     func applyDailyDecay(now: Date, in context: ModelContext) {}
     func replant(_ plot: DBModel.FarmPlot, in context: ModelContext) throws {}
     func purchaseCapacity(in context: ModelContext) throws {}
