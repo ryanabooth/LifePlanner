@@ -48,6 +48,10 @@ final class FarmScene: SKScene {
     private let plotsContainer = SKNode()
     private var plotNodes: [UUID: PlotNode] = [:]
 
+    /// Decorative butterflies + birds that wander the scene background.
+    /// Populated once in `didMove`; runs forever via its own SKActions.
+    private let ambientLife = AmbientLifeController()
+
     override func didMove(to view: SKView) {
         super.didMove(to: view)
         backgroundColor = SKColor(red: 0.62, green: 0.82, blue: 0.45, alpha: 1.0)
@@ -58,6 +62,7 @@ final class FarmScene: SKScene {
         if goldLabel.parent == nil { addChild(goldLabel) }
         if capacityLabel.parent == nil { addChild(capacityLabel) }
         if plotsContainer.parent == nil { addChild(plotsContainer) }
+        ambientLife.populate(in: self)
         layoutHUD()
     }
 
