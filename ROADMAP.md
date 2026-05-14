@@ -93,6 +93,38 @@ Items that were punted during the pivot to keep v0.5.0 focused.
 - [x] **Habit weekly cadence + target counts.** `HabitFrequency.weekly` with `weeklyTarget: Int` on `DBModel.Habit` (schema v0.9.0). `isWeekComplete(containing:)` helper used by quest pool (weekly habits drop out of daily quests once the target is met). Weekly streak = consecutive completed ISO weeks ending at *the current week*, with a mid-week grace pass so backfills don't reset progress. `AddHabitSheet` has a stepper for 1–7×/week; `HabitsTabView` row shows "Weekly · 2/3" badge.
 - [x] **Goal sub-goals & metric tracking.** New `DBModel.SubGoal` model with cascade-delete on the parent (`subGoals` relationship + `order` field for stable display). Checking a sub-goal pumps `taskBaseContribution` health into the parent's plot. New optional metric fields on `DBModel.Goal`: `metricUnit`, `metricTarget`, `metricValue` (schema v0.10.0). `GoalsInteractor.logMetricProgress` adds to the value and contributes habit-magnitude health to the plot. `GoalDetailView` gets a "Sub-goals" section with inline add + swipe delete, and a "Progress" section showing value/target with a ProgressView and a log sheet.
 
+## Phase 7 — Polish & retention
+
+Productivity-app maturity work. Closing the gap from "playable in TestFlight" to "I'd recommend this to a friend." All items are implementable today; no external blockers.
+
+- [ ] **Stats / Insights screen.** New surface showing aggregate data: per-habit completion rate over the last 30 / 90 days (SwiftUI Charts line chart), per-goal contribution totals, longest streak per habit, total tasks completed, total gold earned, plots that have ever died (regret meter). Drives self-reflection and motivates streaks. Pure SwiftData queries — no schema change needed.
+- [ ] **Onboarding flow.** First-launch carousel (TabView with `.page` style) introducing the farm metaphor: farm = your goals, plots = goals, habits/tasks pump health, quests pay gold, neglect kills plots. Skip-able. Persist `hasCompletedOnboarding: Bool` on `FarmState`. 4–6 pages with illustrations.
+- [ ] **Settings screen.** Gear-icon entry from any tab. Sections: Notifications (master toggle + per-type for plot alerts / habit reminders / streak milestones), Data (export all data as JSON, import from JSON, reset farm), About (version, links to docs/asset-spec.md once external). Uses the existing notification permission flow; no new schema.
+- [ ] **Recurring tasks.** Tasks are single-shot today. Add `recurrence: TaskRecurrence?` (`.daily`, `.weekly`, `.weekdays`, `.custom([weekday])`). On `toggleDone`, if the task has a recurrence, the next occurrence is auto-created with a bumped `dueDate`. Schema bump. Updates `AddTaskSheet` UI.
+- [ ] **Accessibility audit.** VoiceOver labels on every farm sprite, plot-health bar, and quest row. Dynamic Type support throughout (no hard-coded `.caption` sizes that don't scale). Contrast check on placeholder farm colors. Respect `UIAccessibility.isReduceMotionEnabled` for farm animations.
+- [ ] **iPad layout pass.** Currently renders but isn't optimized — `NavigationSplitView` for tab layout, larger farm scene, two-pane goal detail.
+- [ ] **Dark mode pass.** Verify every view (esp. SpriteKit-backed) reads cleanly in dark mode. Adjust placeholder farm colors if contrast slips.
+
+## Phase 8 — Farm-sim depth
+
+Game-y systems that layer on top of the productivity core to keep long-term users engaged. Each is independent of the others; ship in any order.
+
+- [ ] **Seasons.** Real-world calendar maps to spring / summer / fall / winter visuals. Farm scene tints + ambient particle effects change at each transition. Optional: per-season passive modifier (e.g. winter doubles decay for non-evergreens). `Season` enum derived from `Date`; no schema needed.
+- [ ] **Weather events.** Periodic 24-hour weather episodes — rain doubles habit contribution, drought halves task contribution, sunshine pays passive gold. Surfaced via a small HUD icon + tap-to-explain. New `DBModel.WeatherEvent { kind, startedAt, expiresAt }`. Schema bump.
+- [ ] **Achievements.** Meta-rewards for milestones: "Logged 100 habits", "First 30-day streak", "Owned 5 cosmetics", "Reached year 1 of farming", "First plot revived from dead". Surfaced via a trophy-shelf view + immediate local notification on first unlock. New `DBModel.Achievement { slug, unlockedAt }`. Catalog defined in code; rule evaluation hooks into existing toggle/claim paths.
+- [ ] **Goal templates.** Pre-built goal templates ("Run a 5K", "Read 12 books", "Save $5K") so new users get a fast start without staring at an empty Goals tab. Static catalog + an "Add from template" button on the empty-state view. No schema change.
+- [ ] **Tool upgrades.** Buy-with-gold farm tools that boost contribution magnitudes (better watering can = +5 to habit contribution; sharper hoe = +5 task contribution). New `DBModel.OwnedTool` mirroring `OwnedCosmetic`. Schema bump.
+
+## Phase 9 — App Store launch prep
+
+The work between "TestFlight beta with 5 friends" and "public listing on the App Store."
+
+- [ ] **Privacy policy & terms.** Static webpages, linked from Settings → About and the App Store listing. Local-only data simplifies this — no third-party data collection to disclose.
+- [ ] **Crash reporting.** Either integrate Sentry (or similar) behind a small wrapper, or formalize the Xcode-built-in crash-log flow via TestFlight feedback.
+- [ ] **App Store screenshots & description.** Generate 6.5" / 6.1" iPhone screenshots for the marketing slots: Farm, Tasks, Habits, Goal detail with metric, Quest log, Cosmetic shop. Description copy, keywords, category selection.
+- [ ] **Real-device QA pass.** Run every interaction on a physical iPhone, including notifications, App Intents from Siri, Spotlight search results. Catch issues simulators miss.
+- [ ] **Performance pass.** Instruments time-profile the farm scene during heavy animation (multiple plots animating + ambient life NPCs). Time-profile SwiftData queries against a 6-month-old account simulation (1000+ habit log entries) to catch any quadratic surprises.
+
 ## Deferred / explicitly out of scope for v0.5.0
 
 - SwiftData migration (hard reset chosen for the v0.4.0 → v0.5.0 cutover; pre-existing local data is discarded).
