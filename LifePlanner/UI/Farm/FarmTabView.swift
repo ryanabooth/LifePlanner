@@ -33,6 +33,7 @@ struct FarmTabView: View {
     @State private var showAddTask = false
     @State private var showAddHabit = false
     @State private var showAddGoal = false
+    @State private var showDevMenu = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -51,6 +52,9 @@ struct FarmTabView: View {
                     }
                     .onReceive(scene.tappedPlotID) { id in
                         presentedPlot = PresentedPlot(id: id)
+                    }
+                    .onReceive(scene.tappedFarmhouse) { _ in
+                        showDevMenu = true
                     }
 
                 overlayButtons
@@ -89,6 +93,9 @@ struct FarmTabView: View {
             AddGoalSheet { draft in
                 injected.interactors.goals.add(draft, in: modelContext)
             }
+        }
+        .sheet(isPresented: $showDevMenu) {
+            DevMenuView()
         }
     }
 
