@@ -45,6 +45,7 @@ final class RealTasksInteractor: TasksInteractor {
         context.insert(task)
         syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: task.isDone)
         Swift.Task.detached { await SpotlightIndexer.shared.index(task: task) }
+        context.saveQuietly()
     }
 
     func update(_ task: DBModel.Task, with draft: TaskDraft, in context: ModelContext) {
@@ -58,6 +59,7 @@ final class RealTasksInteractor: TasksInteractor {
         task.updatedAt = Date()
         syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: task.isDone)
         Swift.Task.detached { await SpotlightIndexer.shared.index(task: task) }
+        context.saveQuietly()
     }
 
     func toggleDone(_ task: DBModel.Task, in context: ModelContext) {
@@ -76,6 +78,7 @@ final class RealTasksInteractor: TasksInteractor {
             syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: false)
             Swift.Task.detached { await SpotlightIndexer.shared.index(task: task) }
         }
+        context.saveQuietly()
     }
 
     func delete(_ task: DBModel.Task, in context: ModelContext) {
@@ -83,6 +86,7 @@ final class RealTasksInteractor: TasksInteractor {
         let id = task.id
         Swift.Task.detached { await SpotlightIndexer.shared.remove(taskID: id) }
         context.delete(task)
+        context.saveQuietly()
     }
 
     private func syncReminder(id: UUID, title: String, dueDate: Date?, isDone: Bool) {

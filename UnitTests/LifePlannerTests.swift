@@ -779,6 +779,40 @@ final class LifePlannerTests: XCTestCase {
         )
     }
 
+    // MARK: - Persistence (regression: data must survive a context reload)
+
+    @MainActor
+    func test_addedGoalSurvivesContextReload() throws {
+        let container = try ModelContainer.appModelContainer(inMemoryOnly: true)
+        let context = ModelContext(container)
+        let farm = RealFarmInteractor()
+        farm.bootstrap(in: context)
+        let goals = RealGoalsInteractor(farm: farm)
+
+        goals.add(GoalDraft(title: "Run a marathon"), in: context)
+
+        // Drop the context — a fresh one reads from the underlying store.
+        // If `add` doesn't save, the new context sees no goal.
+        let fresh = ModelContext(container)
+        let found = try fresh.fetch(FetchDescriptor<DBModel.Goal>())
+        XCTAssertEqual(found.count, 1, "goal must persist immediately, not rely on autosave")
+        XCTAssertEqual(found.first?.title, "Run a marathon")
+    }
+
+    @MainActor
+    func test_addedHabitSurvivesContextReload() throws {
+        let container = try ModelContainer.appModelContainer(inMemoryOnly: true)
+        let context = ModelContext(container)
+        let habits = RealHabitsInteractor(scheduler: StubNotificationScheduler())
+
+        habits.add(HabitDraft(title: "Stretch"), in: context)
+
+        let fresh = ModelContext(container)
+        let found = try fresh.fetch(FetchDescriptor<DBModel.Habit>())
+        XCTAssertEqual(found.count, 1, "habit must persist immediately, not rely on autosave")
+        XCTAssertEqual(found.first?.title, "Stretch")
+    }
+
     // MARK: - archiveAndDelete (existing test, just moved after new tests)
 
     @MainActor

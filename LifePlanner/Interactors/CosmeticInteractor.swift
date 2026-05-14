@@ -44,6 +44,7 @@ final class RealCosmeticInteractor: CosmeticInteractor {
         }
         try economy.spend(catalogItem.goldCost, reason: "cosmetic-\(slug)", in: context)
         context.insert(DBModel.OwnedCosmetic(slug: slug, kind: catalogItem.kind))
+        context.saveQuietly()
     }
 
     func equip(_ cosmetic: DBModel.OwnedCosmetic, in context: ModelContext) {
@@ -54,11 +55,13 @@ final class RealCosmeticInteractor: CosmeticInteractor {
         }
         cosmetic.equippedAt = Date()
         cosmetic.updatedAt = Date()
+        context.saveQuietly()
     }
 
     func unequip(_ cosmetic: DBModel.OwnedCosmetic, in context: ModelContext) {
         cosmetic.equippedAt = nil
         cosmetic.updatedAt = Date()
+        context.saveQuietly()
     }
 
     func equipped(kind: CosmeticKind, in context: ModelContext) -> DBModel.OwnedCosmetic? {

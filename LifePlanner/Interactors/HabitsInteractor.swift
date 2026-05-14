@@ -64,6 +64,7 @@ final class RealHabitsInteractor: HabitsInteractor {
         )
         context.insert(habit)
         syncReminder(for: habit)
+        context.saveQuietly()
     }
 
     func update(_ habit: DBModel.Habit, with draft: HabitDraft, in context: ModelContext) {
@@ -75,6 +76,7 @@ final class RealHabitsInteractor: HabitsInteractor {
         habit.reminderTime = draft.reminderTime
         habit.updatedAt = Date()
         syncReminder(for: habit)
+        context.saveQuietly()
     }
 
     func setArchived(_ habit: DBModel.Habit, archived: Bool, in context: ModelContext) {
@@ -85,11 +87,13 @@ final class RealHabitsInteractor: HabitsInteractor {
         } else {
             syncReminder(for: habit)
         }
+        context.saveQuietly()
     }
 
     func delete(_ habit: DBModel.Habit, in context: ModelContext) {
         cancelReminder(for: habit)
         context.delete(habit)
+        context.saveQuietly()
     }
 
     func toggleDone(_ habit: DBModel.Habit, on day: Date, in context: ModelContext) {
@@ -112,6 +116,7 @@ final class RealHabitsInteractor: HabitsInteractor {
         habit.updatedAt = Date()
         recomputeStreak(for: habit, on: day)
         checkStreakMilestone(for: habit, in: context)
+        context.saveQuietly()
     }
 
     // MARK: - Streak helpers

@@ -39,6 +39,7 @@ final class RealGoalsInteractor: GoalsInteractor {
         // Allocate a farm plot. If at capacity, silently skip — Step 7's UI will
         // surface the over-capacity error and prompt for an upgrade.
         try? farm.bindPlot(to: goal, in: context)
+        context.saveQuietly()
     }
 
     func update(_ goal: DBModel.Goal, with draft: GoalDraft, in context: ModelContext) {
@@ -52,22 +53,26 @@ final class RealGoalsInteractor: GoalsInteractor {
         // existing plot keeps its sprite. Picker UI in Step 7 will disable the
         // control for goals that already have a bound plot.
         goal.updatedAt = Date()
+        context.saveQuietly()
     }
 
     func setStatus(_ goal: DBModel.Goal, status: GoalStatus, in context: ModelContext) {
         goal.status = status
         goal.updatedAt = Date()
+        context.saveQuietly()
     }
 
     func delete(_ goal: DBModel.Goal, in context: ModelContext) {
         // Goal.plot has cascade delete rule, so the plot row is cleaned up automatically.
         context.delete(goal)
+        context.saveQuietly()
     }
 
     func setLinks(_ goal: DBModel.Goal, tasks: [DBModel.Task], habits: [DBModel.Habit], in context: ModelContext) {
         goal.linkedTasks = tasks
         goal.linkedHabits = habits
         goal.updatedAt = Date()
+        context.saveQuietly()
     }
 }
 
