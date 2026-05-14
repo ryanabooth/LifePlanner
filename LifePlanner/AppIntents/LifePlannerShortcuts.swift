@@ -1,7 +1,7 @@
 import AppIntents
 
-/// Registers the three LifePlanner actions with Siri and the Shortcuts app.
-struct LifePlannerShortcuts: AppShortcutsProvider {
+/// Registers the three Tiller actions with Siri and the Shortcuts app.
+struct TillerShortcuts: AppShortcutsProvider {
 
     static var appShortcuts: [AppShortcut] {
         AppShortcut(

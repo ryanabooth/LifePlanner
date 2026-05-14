@@ -8,7 +8,7 @@ actor SpotlightIndexer {
 
     static let shared = SpotlightIndexer()
 
-    private let domain = "com.lifeplanner.tasks"
+    private let domain = "com.tiller.tasks"
     private let index = CSSearchableIndex.default()
 
     func index(task: DBModel.Task) {

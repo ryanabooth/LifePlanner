@@ -1,4 +1,4 @@
-# LifePlanner — Claude Code instructions
+# Tiller — Claude Code instructions
 
 iOS 18+ productivity-farming-sim. SwiftUI + SwiftData + SpriteKit. Habits, tasks, and goals drive growth on a 2D farm; daily quests pay gold.
 

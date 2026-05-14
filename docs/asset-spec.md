@@ -1,4 +1,4 @@
-# LifePlanner — Asset & Audio Spec
+# Tiller — Asset & Audio Spec
 
 Reference for the Phase 2 art and audio drops. Everything below is verified against the code on `main`; the file paths and key names are what the runtime loaders look for. As long as a file lands in the right slot, it just works — no code changes required per asset.
 
