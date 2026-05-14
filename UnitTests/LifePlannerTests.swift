@@ -708,7 +708,12 @@ final class LifePlannerTests: XCTestCase {
         try context.save()
 
         XCTAssertEqual(harvestQuest.state, .completed, "harvestMature auto-claimed after checkFarmQuests")
-        XCTAssertEqual(economy.balance(in: context), goldBefore + harvestQuest.goldReward)
+        // The refresh-on-add upgrade slotted the new habit into a quest, so the
+        // habitDue quest auto-claims here too. Both rewards land.
+        XCTAssertEqual(
+            economy.balance(in: context),
+            goldBefore + harvestQuest.goldReward + QuestTuning.habitReward
+        )
     }
 
     // MARK: - Weekly harvest quest
@@ -777,6 +782,78 @@ final class LifePlannerTests: XCTestCase {
             goldBefore + weekQuest.goldReward,
             "weekly reward credited"
         )
+    }
+
+    // MARK: - refreshTodaysCommonFieldSlots (bug: fresh installs show only commonField)
+
+    @MainActor
+    func test_refresh_upgradesCommonFieldToNewHabit() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let farm = RealFarmInteractor(economy: economy)
+        farm.bootstrap(in: context)
+        let quests = RealQuestInteractor(economy: economy)
+        let habits = RealHabitsInteractor(
+            scheduler: StubNotificationScheduler(), economy: economy,
+            farm: farm, quests: quests)
+
+        // No tasks/habits yet → rollDaily fills all 3 slots with commonField.
+        let initial = quests.rollDaily(on: Date(), in: context)
+        try context.save()
+        XCTAssertEqual(initial.filter { $0.kind == .commonFieldTend }.count, 3)
+
+        // User adds a habit. The add path should upgrade a placeholder slot.
+        habits.add(HabitDraft(title: "Stretch"), in: context)
+        try context.save()
+
+        let after = quests.rollDaily(on: Date(), in: context)
+        let habitSlot = after.first { $0.kind == .habitDue }
+        XCTAssertNotNil(habitSlot, "habit should be assigned to a quest slot after add")
+        XCTAssertEqual(after.filter { $0.kind == .commonFieldTend }.count, 2)
+    }
+
+    @MainActor
+    func test_refresh_upgradesCommonFieldToNewTask() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let farm = RealFarmInteractor(economy: economy)
+        farm.bootstrap(in: context)
+        let quests = RealQuestInteractor(economy: economy)
+        let tasks = RealTasksInteractor(
+            scheduler: StubNotificationScheduler(), farm: farm, quests: quests)
+
+        let initial = quests.rollDaily(on: Date(), in: context)
+        try context.save()
+        XCTAssertEqual(initial.filter { $0.kind == .commonFieldTend }.count, 3)
+
+        // Task with a dueDate <= end-of-today is eligible for today's pool.
+        tasks.add(TaskDraft(title: "Pay bill", dueDate: Date()), in: context)
+        try context.save()
+
+        let after = quests.rollDaily(on: Date(), in: context)
+        XCTAssertNotNil(after.first { $0.kind == .taskDue }, "task quest should appear")
+        XCTAssertEqual(after.filter { $0.kind == .commonFieldTend }.count, 2)
+    }
+
+    @MainActor
+    func test_refresh_isNoOpWhenNoCandidates() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let farm = RealFarmInteractor(economy: economy)
+        farm.bootstrap(in: context)
+        let quests = RealQuestInteractor(economy: economy)
+
+        quests.rollDaily(on: Date(), in: context)
+        try context.save()
+        let beforeIDs = try context.fetch(FetchDescriptor<DBModel.Quest>()).map(\.id).sorted()
+
+        // No tasks/habits exist → refresh has nothing to do.
+        quests.refreshTodaysCommonFieldSlots(in: context)
+        try context.save()
+
+        let after = try context.fetch(FetchDescriptor<DBModel.Quest>())
+        XCTAssertEqual(after.map(\.id).sorted(), beforeIDs)
+        XCTAssertTrue(after.allSatisfy { $0.kind == .commonFieldTend })
     }
 
     // MARK: - Weekly cadence

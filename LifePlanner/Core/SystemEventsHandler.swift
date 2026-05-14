@@ -64,6 +64,9 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         container.interactors.quests.expireOldQuests(on: now, in: context)
         container.interactors.quests.rollDaily(on: now, in: context)
         container.interactors.quests.rollWeekly(on: now, in: context)
+        // If yesterday's batch was rolled before any tasks/habits existed,
+        // upgrade commonField placeholders to real candidates now.
+        container.interactors.quests.refreshTodaysCommonFieldSlots(in: context)
         if context.hasChanges {
             try? context.save()
         }

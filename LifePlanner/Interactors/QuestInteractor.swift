@@ -57,6 +57,13 @@ protocol QuestInteractor {
     /// is now satisfied. Called after every farm contribution.
     func checkFarmQuests(in context: ModelContext)
 
+    /// Replace any `.commonFieldTend` placeholder slots with real task/habit
+    /// candidates that have become available since today's batch was rolled.
+    /// Idempotent — does nothing when there are no upgrade candidates.
+    /// Called from `TasksInteractor.add` / `HabitsInteractor.add` so newly-
+    /// created items appear in today's quest log immediately.
+    func refreshTodaysCommonFieldSlots(in context: ModelContext)
+
     /// Roll the weekly harvest quest for the ISO week containing `day`.
     /// Idempotent — does nothing if a slot-3 quest already exists this week.
     @discardableResult
@@ -156,6 +163,28 @@ final class RealQuestInteractor: QuestInteractor {
         quest.updatedAt = Date()
         economy.credit(quest.goldReward, reason: "quest-\(quest.kind)", in: context)
         Task { @MainActor in SoundPlayer.shared.play(.questClaim) }
+    }
+
+    // MARK: - refreshTodaysCommonFieldSlots
+
+    func refreshTodaysCommonFieldSlots(in context: ModelContext) {
+        let today = calendar.startOfDay(for: Date())
+        let todays = fetchQuests(on: today, in: context)
+        let placeholders = todays.filter { $0.kind == .commonFieldTend && $0.state == .active }
+        guard !placeholders.isEmpty else { return }
+
+        // Exclude refs already in any of today's slots so we don't double-book.
+        let usedRefs = Set(todays.compactMap(\.referenceID))
+        let pool = candidatePool(today: today, excluding: usedRefs, in: context)
+        guard !pool.isEmpty else { return }
+
+        var picks = shuffled(pool, count: placeholders.count)
+        for slot in placeholders {
+            guard let candidate = picks.popLast() else { break }
+            apply(candidate: candidate, to: slot)
+            slot.updatedAt = Date()
+            // Do not bump rerollCount — this is an auto-upgrade, not a user reroll.
+        }
     }
 
     // MARK: - checkFarmQuests
@@ -371,6 +400,7 @@ final class StubQuestInteractor: QuestInteractor {
     func claim(_ quest: DBModel.Quest, in context: ModelContext) throws {}
     func notifyCompletion(referenceID: UUID, in context: ModelContext) {}
     func checkFarmQuests(in context: ModelContext) {}
+    func refreshTodaysCommonFieldSlots(in context: ModelContext) {}
     @discardableResult
     func rollWeekly(on day: Date, in context: ModelContext) -> DBModel.Quest? { nil }
     func trackMatureTransitions(count: Int, in context: ModelContext) {}
