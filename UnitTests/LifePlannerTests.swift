@@ -211,21 +211,22 @@ final class LifePlannerTests: XCTestCase {
         farm.bootstrap(in: context)
         let economy = RealEconomyInteractor()
 
-        XCTAssertEqual(economy.balance(in: context), 0)
+        // Bootstrap seeds 100 starting gold.
+        XCTAssertEqual(economy.balance(in: context), 100)
         economy.credit(50, reason: "test", in: context)
-        XCTAssertEqual(economy.balance(in: context), 50)
+        XCTAssertEqual(economy.balance(in: context), 150)
 
         try economy.spend(20, reason: "test", in: context)
-        XCTAssertEqual(economy.balance(in: context), 30)
+        XCTAssertEqual(economy.balance(in: context), 130)
 
-        XCTAssertThrowsError(try economy.spend(999, reason: "test", in: context)) { error in
+        XCTAssertThrowsError(try economy.spend(9999, reason: "test", in: context)) { error in
             guard case EconomyError.insufficientGold(let have, let need) = error else {
                 return XCTFail("expected insufficientGold, got \(error)")
             }
-            XCTAssertEqual(have, 30)
-            XCTAssertEqual(need, 999)
+            XCTAssertEqual(have, 130)
+            XCTAssertEqual(need, 9999)
         }
-        XCTAssertEqual(economy.balance(in: context), 30, "balance unchanged on failed spend")
+        XCTAssertEqual(economy.balance(in: context), 130, "balance unchanged on failed spend")
     }
 
     @MainActor
@@ -406,6 +407,9 @@ final class LifePlannerTests: XCTestCase {
         let economy = RealEconomyInteractor()
         let farm = RealFarmInteractor(economy: economy)
         farm.bootstrap(in: context)
+        // FarmState seeds with 100 starting gold; drain so this test can verify
+        // the "no gold → throws" path before topping back up.
+        try economy.spend(economy.balance(in: context), reason: "drain for test", in: context)
         let quests = RealQuestInteractor(economy: economy, rng: { 0 })
 
         let rolled = quests.rollDaily(on: Date(), in: context)
@@ -487,6 +491,9 @@ final class LifePlannerTests: XCTestCase {
         let farm = RealFarmInteractor(economy: economy)
         let goals = RealGoalsInteractor(farm: farm)
         farm.bootstrap(in: context)
+        // FarmState seeds with 100 starting gold; drain so the "no gold" branch
+        // is reachable and the post-replant balance assertion stays at 0.
+        try economy.spend(economy.balance(in: context), reason: "drain for test", in: context)
         goals.add(GoalDraft(title: "Subject", farmElementType: .crop), in: context)
         let goal = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Goal>()).first)
         let plot = try XCTUnwrap(goal.plot)
