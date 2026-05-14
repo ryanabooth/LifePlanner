@@ -86,10 +86,15 @@ Expand gold sinks beyond capacity.
 - [x] **App Intents / Shortcuts.** `ShowFarmIntent`, `RollTodaysQuestsIntent`, `MarkHabitDoneIntent` (performs background SwiftData write — no app open needed). `HabitEntity` + `HabitEntityQuery` for parameter resolution. `LifePlannerShortcuts: AppShortcutsProvider` registers all three with Siri and the Shortcuts app.
 - [x] **Spotlight.** `SpotlightIndexer` actor indexes open tasks via `CoreSpotlight`; wired into `TasksInteractor` (add/update/done/delete). `SystemEventsHandler` calls `reindexAll` on every foreground.
 
+## Phase 6 — Carry-over polish
+
+Items that were punted during the pivot to keep v0.5.0 focused.
+
+- [x] **Habit weekly cadence + target counts.** `HabitFrequency.weekly` with `weeklyTarget: Int` on `DBModel.Habit` (schema v0.9.0). `isWeekComplete(containing:)` helper used by quest pool (weekly habits drop out of daily quests once the target is met). Weekly streak = consecutive completed ISO weeks ending at *the current week*, with a mid-week grace pass so backfills don't reset progress. `AddHabitSheet` has a stepper for 1–7×/week; `HabitsTabView` row shows "Weekly · 2/3" badge.
+- [ ] **Goal sub-goals & metric tracking.** Currently a goal is a single string + status. Future: a goal can have ordered sub-goals (mini-quests that aggregate into the parent), and optional numeric metrics (e.g., miles run, books read) that drive richer farm-plot growth signals.
+
 ## Deferred / explicitly out of scope for v0.5.0
 
 - SwiftData migration (hard reset chosen for the v0.4.0 → v0.5.0 cutover; pre-existing local data is discarded).
 - Cosmetic systems (farmer, pets, farmhouse) — see Phase 3.
 - AI-generated final art — placeholder phase ships first; see Phase 2.
-- Habit weekly/custom cadence and target counts (carry-over from old roadmap; revisit after pivot lands).
-- Goal sub-goals & metric tracking (carry-over; revisit after pivot lands).

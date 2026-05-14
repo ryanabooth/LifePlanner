@@ -15,6 +15,7 @@ struct AddHabitSheet: View {
                 title: existing.title,
                 notes: existing.notes,
                 frequency: existing.frequency,
+                weeklyTarget: existing.weeklyTarget,
                 reminderTime: existing.reminderTime
             ))
             _includeReminder = State(initialValue: existing.reminderTime != nil)
@@ -42,6 +43,15 @@ struct AddHabitSheet: View {
                     Picker("Frequency", selection: $draft.frequency) {
                         ForEach(HabitFrequency.allCases) { f in
                             Text(f.label).tag(f)
+                        }
+                    }
+                    if draft.frequency == .weekly {
+                        Stepper(
+                            value: $draft.weeklyTarget,
+                            in: 1...7,
+                            step: 1
+                        ) {
+                            Text("Target: \(draft.weeklyTarget)× per week")
                         }
                     }
                 }

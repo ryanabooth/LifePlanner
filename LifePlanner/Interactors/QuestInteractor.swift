@@ -239,14 +239,18 @@ final class RealQuestInteractor: QuestInteractor {
             pool.append(.task(task))
         }
 
-        // Habits: non-archived + not logged today + not already used.
+        // Habits: non-archived + cadence target not yet met + not already used.
+        // Daily habits drop out once today's log lands; weekly habits drop out
+        // once the per-week target is met, regardless of which days were used.
+        // Weekly habits with the target still open also drop out if today already
+        // has a log (one quest per day max).
         let activeHabits = (try? context.fetch(FetchDescriptor<DBModel.Habit>(
             predicate: #Predicate { $0.archived == false }
         ))) ?? []
         for habit in activeHabits where !usedRefs.contains(habit.id) {
-            if !habit.isDone(on: today, calendar: calendar) {
-                pool.append(.habit(habit))
-            }
+            if habit.isWeekComplete(containing: today, calendar: calendar) { continue }
+            if habit.isDone(on: today, calendar: calendar) { continue }
+            pool.append(.habit(habit))
         }
 
         // harvestMature: include when the user has enough living goal plots that

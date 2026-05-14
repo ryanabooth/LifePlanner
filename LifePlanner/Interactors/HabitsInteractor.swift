@@ -5,6 +5,8 @@ struct HabitDraft {
     var title: String = ""
     var notes: String? = nil
     var frequency: HabitFrequency = .daily
+    /// Per-week target for `.weekly` cadence. Ignored when `frequency == .daily`.
+    var weeklyTarget: Int = 3
     var reminderTime: Date? = nil
 }
 
@@ -60,6 +62,7 @@ final class RealHabitsInteractor: HabitsInteractor {
             title: title,
             notes: draft.notes?.nilIfBlank,
             frequency: draft.frequency,
+            weeklyTarget: max(1, draft.weeklyTarget),
             reminderTime: draft.reminderTime
         )
         context.insert(habit)
@@ -73,6 +76,7 @@ final class RealHabitsInteractor: HabitsInteractor {
         habit.title = title
         habit.notes = draft.notes?.nilIfBlank
         habit.frequency = draft.frequency
+        habit.weeklyTarget = max(1, draft.weeklyTarget)
         habit.reminderTime = draft.reminderTime
         habit.updatedAt = Date()
         syncReminder(for: habit)
@@ -122,6 +126,18 @@ final class RealHabitsInteractor: HabitsInteractor {
     // MARK: - Streak helpers
 
     private func recomputeStreak(for habit: DBModel.Habit, on baseDay: Date) {
+        let streak: Int
+        switch habit.frequency {
+        case .daily:
+            streak = computeDailyStreak(for: habit, endingAt: baseDay)
+        case .weekly:
+            streak = computeWeeklyStreak(for: habit, endingAt: baseDay)
+        }
+        habit.currentStreak = streak
+        if streak > habit.longestStreak { habit.longestStreak = streak }
+    }
+
+    private func computeDailyStreak(for habit: DBModel.Habit, endingAt baseDay: Date) -> Int {
         let entryDays = Set((habit.entries ?? []).map { calendar.startOfDay(for: $0.date) })
         var streak = 0
         var expected = calendar.startOfDay(for: baseDay)
@@ -130,8 +146,35 @@ final class RealHabitsInteractor: HabitsInteractor {
             guard let prev = calendar.date(byAdding: .day, value: -1, to: expected) else { break }
             expected = prev
         }
-        habit.currentStreak = streak
-        if streak > habit.longestStreak { habit.longestStreak = streak }
+        return streak
+    }
+
+    /// Walks back week-by-week from the *current* ISO week, counting consecutive
+    /// completed weeks. The current week gets a grace pass when it's mid-progress
+    /// — only fully past weeks break the chain. `baseDay` is ignored because the
+    /// streak should reflect "where you are now", not where the toggle landed
+    /// (e.g. backfilling last Tuesday shouldn't reset the streak).
+    private func computeWeeklyStreak(for habit: DBModel.Habit, endingAt baseDay: Date) -> Int {
+        let target = max(1, habit.weeklyTarget)
+        let entries = (habit.entries ?? []).map { $0.date }
+        let comps = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+        guard var weekStart = calendar.date(from: comps) else { return 0 }
+        var streak = 0
+        var isCurrentWeek = true
+        while true {
+            guard let weekEnd = calendar.date(byAdding: .weekOfYear, value: 1, to: weekStart) else { break }
+            let inWeek = entries.filter { $0 >= weekStart && $0 < weekEnd }.count
+            if inWeek >= target {
+                streak += 1
+            } else if !isCurrentWeek {
+                break
+            }
+            // else: current week not yet complete — grace pass, don't break.
+            isCurrentWeek = false
+            guard let prev = calendar.date(byAdding: .weekOfYear, value: -1, to: weekStart) else { break }
+            weekStart = prev
+        }
+        return streak
     }
 
     private func checkStreakMilestone(for habit: DBModel.Habit, in context: ModelContext) {

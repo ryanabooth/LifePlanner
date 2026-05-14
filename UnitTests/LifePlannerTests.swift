@@ -779,6 +779,98 @@ final class LifePlannerTests: XCTestCase {
         )
     }
 
+    // MARK: - Weekly cadence
+
+    @MainActor
+    func test_weeklyHabit_targetMetMarksWeekComplete() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let farm = RealFarmInteractor(economy: economy)
+        farm.bootstrap(in: context)
+        let habits = RealHabitsInteractor(
+            scheduler: StubNotificationScheduler(), economy: economy, farm: farm)
+
+        habits.add(HabitDraft(title: "Gym", frequency: .weekly, weeklyTarget: 3), in: context)
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+
+        let cal = Calendar.current
+        // Find the start of this week so all log days fall in the same ISO week.
+        let comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+        let weekStart = try XCTUnwrap(cal.date(from: comps))
+
+        XCTAssertFalse(habit.isWeekComplete(containing: weekStart))
+        habits.toggleDone(habit, on: weekStart, in: context)
+        habits.toggleDone(habit, on: cal.date(byAdding: .day, value: 1, to: weekStart)!, in: context)
+        XCTAssertFalse(habit.isWeekComplete(containing: weekStart), "2/3 — not complete yet")
+        habits.toggleDone(habit, on: cal.date(byAdding: .day, value: 2, to: weekStart)!, in: context)
+        XCTAssertTrue(habit.isWeekComplete(containing: weekStart), "3/3 — week complete")
+    }
+
+    @MainActor
+    func test_weeklyHabit_streakCountsConsecutiveCompletedWeeks() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let farm = RealFarmInteractor(economy: economy)
+        farm.bootstrap(in: context)
+        let habits = RealHabitsInteractor(
+            scheduler: StubNotificationScheduler(), economy: economy, farm: farm)
+
+        habits.add(HabitDraft(title: "Yoga", frequency: .weekly, weeklyTarget: 2), in: context)
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+        let thisWeek = try XCTUnwrap(cal.date(from: comps))
+
+        // Log 2 entries in each of the last 3 ISO weeks (current included).
+        for weeksAgo in 0...2 {
+            let weekStart = cal.date(byAdding: .weekOfYear, value: -weeksAgo, to: thisWeek)!
+            habits.toggleDone(habit, on: weekStart, in: context)
+            habits.toggleDone(habit, on: cal.date(byAdding: .day, value: 2, to: weekStart)!, in: context)
+        }
+        // Skip one week — streak chain breaks at that gap.
+        // Two more complete weeks before the gap should NOT count.
+        let gapWeek = cal.date(byAdding: .weekOfYear, value: -3, to: thisWeek)!
+        // intentionally only log 1 entry in gapWeek — below target
+        habits.toggleDone(habit, on: gapWeek, in: context)
+
+        XCTAssertEqual(habit.currentStreak, 3, "3 consecutive completed weeks ending now")
+    }
+
+    @MainActor
+    func test_weeklyHabit_questPoolExcludesWhenTargetMet() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let farm = RealFarmInteractor(economy: economy)
+        farm.bootstrap(in: context)
+        let quests = RealQuestInteractor(economy: economy)
+        let habits = RealHabitsInteractor(
+            scheduler: StubNotificationScheduler(), economy: economy,
+            farm: farm, quests: quests)
+
+        habits.add(HabitDraft(title: "Run", frequency: .weekly, weeklyTarget: 2), in: context)
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+        let weekStart = try XCTUnwrap(cal.date(from: comps))
+        // Log two entries earlier this week so target is met; logging today is unnecessary.
+        habits.toggleDone(habit, on: weekStart, in: context)
+        let dayBeforeToday = cal.date(byAdding: .day, value: -1, to: Date()) ?? Date()
+        if cal.isDate(dayBeforeToday, equalTo: Date(), toGranularity: .day) {
+            // edge case: weekStart == today on Mondays. Use day-after-weekStart as
+            // second log instead so target is still met without using today.
+            habits.toggleDone(habit, on: cal.date(byAdding: .day, value: 1, to: weekStart)!, in: context)
+        } else {
+            habits.toggleDone(habit, on: dayBeforeToday, in: context)
+        }
+
+        // Roll today's quests — weekly habit with target already met must NOT be picked.
+        let rolled = quests.rollDaily(on: Date(), in: context)
+        let pickedHabit = rolled.first { $0.referenceID == habit.id }
+        XCTAssertNil(pickedHabit, "weekly habit excluded from quest pool once target is met")
+    }
+
     // MARK: - Persistence (regression: data must survive a context reload)
 
     @MainActor

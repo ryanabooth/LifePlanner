@@ -88,12 +88,13 @@ private struct HabitRow: View {
     let onEdit: () -> Void
 
     var body: some View {
-        let done = habit.isDone(on: Date())
+        let doneToday = habit.isDone(on: Date())
+        let weekComplete = habit.isWeekComplete(containing: Date())
         HStack(spacing: 12) {
             Button(action: onToggle) {
-                Image(systemName: done ? "checkmark.circle.fill" : "circle")
+                Image(systemName: doneToday ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
-                    .foregroundStyle(done ? .green : .secondary)
+                    .foregroundStyle(doneToday ? .green : .secondary)
                     .contentShape(Rectangle())
                     .frame(width: 32, height: 32)
             }
@@ -103,10 +104,10 @@ private struct HabitRow: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(habit.title)
-                            .strikethrough(done)
-                            .foregroundStyle(done ? .secondary : .primary)
+                            .strikethrough(weekComplete)
+                            .foregroundStyle(weekComplete ? .secondary : .primary)
                         HStack(spacing: 6) {
-                            Text(habit.frequency.label)
+                            Text(cadenceLabel)
                             if habit.reminderTime != nil {
                                 Image(systemName: "bell.fill")
                             }
@@ -125,6 +126,16 @@ private struct HabitRow: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+        }
+    }
+
+    private var cadenceLabel: String {
+        switch habit.frequency {
+        case .daily:
+            return habit.frequency.label
+        case .weekly:
+            let count = habit.entriesInWeek(containing: Date())
+            return "Weekly · \(count)/\(habit.weeklyTarget)"
         }
     }
 }
