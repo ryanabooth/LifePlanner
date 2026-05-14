@@ -100,6 +100,7 @@ final class RealQuestInteractor: QuestInteractor {
         } catch EconomyError.insufficientGold(let have, let need) {
             throw QuestError.insufficientGold(have: have, need: need)
         }
+        Task { @MainActor in SoundPlayer.shared.play(.questReroll) }
 
         let day = calendar.startOfDay(for: quest.day)
         let todays = fetchQuests(on: day, in: context)
@@ -133,6 +134,7 @@ final class RealQuestInteractor: QuestInteractor {
         quest.state = .completed
         quest.updatedAt = Date()
         economy.credit(quest.goldReward, reason: "quest-\(quest.kind)", in: context)
+        Task { @MainActor in SoundPlayer.shared.play(.questClaim) }
     }
 
     // MARK: - expireOldQuests

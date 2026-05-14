@@ -161,6 +161,8 @@ final class PlotNode: SKNode {
 
     /// Brief scale pulse + radial sparkle burst when health goes up.
     private func playContributionPulse() {
+        Task { @MainActor in SoundPlayer.shared.play(.contribution) }
+
         let scaleUp = SKAction.scale(to: 1.12, duration: 0.10)
         scaleUp.timingMode = .easeOut
         let scaleDown = SKAction.scale(to: 1.0, duration: 0.15)

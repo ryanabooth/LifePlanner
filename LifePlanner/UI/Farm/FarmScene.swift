@@ -64,6 +64,14 @@ final class FarmScene: SKScene {
         if plotsContainer.parent == nil { addChild(plotsContainer) }
         ambientLife.populate(in: self)
         layoutHUD()
+        // Looping farm ambience. Silent until sfx_farm_ambience.{caf,mp3,wav,m4a}
+        // is added to the bundle.
+        SoundPlayer.shared.startAmbience()
+    }
+
+    override func willMove(from view: SKView) {
+        super.willMove(from: view)
+        SoundPlayer.shared.stopAmbience()
     }
 
     override func didChangeSize(_ oldSize: CGSize) {
