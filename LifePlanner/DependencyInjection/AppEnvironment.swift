@@ -49,15 +49,11 @@ extension AppEnvironment {
         let tasks = RealTasksInteractor()
         let habits = RealHabitsInteractor()
         let goals = RealGoalsInteractor()
-        let contacts = RealContactsInteractor()
-        let contactsBridge = RealContactsBridge()
         return .init(
             userPermissions: userPermissions,
             tasks: tasks,
             habits: habits,
-            goals: goals,
-            contacts: contacts,
-            contactsBridge: contactsBridge
+            goals: goals
         )
     }
 }

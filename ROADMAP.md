@@ -1,153 +1,94 @@
 # LifePlanner Roadmap
 
-Living doc — Phase 5 polish + concrete follow-ups from sim verification.
-Edit freely; commits welcome.
+LifePlanner is pivoting from a four-tab personal organizer into a productivity *farming simulator*. Real goals, habits, and tasks drive in-game progression on a SpriteKit farm. Living doc — edit freely.
 
-## Phase 5 — Polish
+## Vision
 
-Items we deferred from Phase 2 plus broader polish. Ordered roughly by user-visible
-impact, not by sequence — pick whatever's most useful next.
+The user lands on a 2D farm. Every plot, animal pen, and orchard tree on that farm is bound to a real Goal in their life. Logging habits and finishing tasks feeds health into the matching plot; neglect causes plots to wither and eventually die. Daily quests — sourced from due/overdue tasks and pending habits — pay gold on completion. Gold expands the farm (more concurrent goals) and, later, customizes the farmer, pets, and farmhouse.
 
-- [ ] **Notification scheduling for Tasks.** Habits ✅ (see follow-ups
-      below). Tasks `dueDate` still isn't wired to `UNUserNotificationCenter`
-      — apply the same pattern (`NotificationScheduler.scheduleTaskDue` +
-      cancel on complete/delete).
-- [ ] **iCloud sync.** Schema is already CloudKit-compatible (no `.unique`,
-      defaults everywhere, optional to-many relationships). Flip the entitlement
-      and use `ModelConfiguration(cloudKitDatabase:)`. Requires a paid Apple
-      Developer account.
-- [ ] **Habit polish.** Weekly + custom cadence (`HabitFrequency` enum is already
-      extensible without schema migration), streak calculation, target-count
-      per period.
-- [ ] **Today summary.** Cross-feature dashboard: tasks due today + habits to
-      log + active goals at a glance. Display as the Tasks tab header.
+The classic Tasks / Habits / Goals tabs remain as fast direct-entry surfaces; the Farm is the new default experience and the motivator.
 
-### Tasks
-- [ ] **Sort toggle.** Allow user to switch sort order between *due date* (current
-      default) and *priority*. Surface as a toolbar menu or a segmented control
-      above the list. Persist the choice in `AppState` so it survives navigation;
-      maybe persist to `UserDefaults` longer-term.
+## Phase 1 — Pivot (v0.5.0)
 
-### Habits
-- [x] **Make edit discoverable.** ✅ Tap the title area opens the edit sheet
-      (chevron affordance); tap the leading circle still toggles done. Swipe
-      trailing remains archive/delete. (Commit referenced from this entry.)
-- [x] **Reminder = real push notification.** ✅ `RealNotificationScheduler`
-      wraps `UNUserNotificationCenter`; `RealHabitsInteractor` schedules /
-      cancels on add / update / archive / delete using a stable
-      `habit-reminder-<UUID>` identifier. Permission is requested on first
-      schedule. Footer text in `AddHabitSheet` updated.
+The cutover release. Hard schema reset; the previous local DB is discarded on first launch. No CloudKit yet, so no remote impact.
 
-### Contacts
-- [ ] **Swipe-right to mark interaction.** Add a leading swipe action on the
-      contacts list row that records `lastInteraction = now` for that contact.
-      Faster than tap → detail → "Mark interaction now."
-- [ ] **Sort by most-recent interaction by default.** Today the list uses iOS
-      Contacts' `userDefault` sort order (alphabetical). Change default sort to:
-      contacts with a `lastInteraction` date first (most-recent first), then
-      everyone else alphabetically. Add a sort-mode toggle (recent / alpha).
-      Implementation note: `lastInteraction` lives in our `DBModel.Contact`
-      enrichment, so the sort needs to merge the system contact list with the
-      enrichment table — fetch enrichments into a `[String: Date]` keyed by
-      `systemIdentifier` once, then sort the system list with that lookup.
-- swipe right to mark as contacted
-- pin up to 9 contacts as favorites, similar to iMessage (stay on top, bigger avatars)
-- sync avatar from contacts
-- set reminder — contact reminder to call or reach out to friends / family
-    - suggest a text prompt
-    - open an iOS sharing modal that allows email/text/phone call etc
+### Removals
+- [ ] Remove the Contacts tab, `DBModel.Contact`, `ContactsInteractor`, `ContactsBridge`, `ContactsTabView`, `ContactDetailView`, and the contacts-related unit tests.
+- [ ] Drop `NSContactsUsageDescription` and any Contacts entitlement.
+- [ ] Drop `DBModel.Contact.self` from `AppSchema`; bump schema to `Version(0, 5, 0)`.
 
+### New data model
+- [ ] `DBModel.FarmState` — singleton: gold balance, plot capacity, last decay tick.
+- [ ] `DBModel.FarmPlot` — grid position, kind (crop/animal/tree/structure/commonField), health (0–100), state (empty/growing/mature/withered/dead), optional bound `Goal`.
+- [ ] `DBModel.Quest` — day-keyed, slot 0–2, kind (taskDue/habitDue/commonFieldTend), referenceID, goldReward, state, rerollCount.
+- [ ] `DBModel.Goal` gains `farmElementType` (default `.crop`) and an optional `plot` relationship.
 
-## TestFlight setup
+### Farm tab (new default)
+- [ ] `FarmTabView` hosting `SpriteView` becomes the first tab and the default `selectedTab`.
+- [ ] `FarmScene` (SpriteKit) renders a tile grid sized to `FarmState.plotCapacity`, with a HUD (gold counter, quest-log button, capacity-upgrade button) and tap-to-inspect plot interaction.
+- [ ] Placeholder visuals: `PlotTextureFactory` returns procedural `SKShapeNode` placeholders keyed by `(kind, state, healthBucket)`. AI-generated PNGs swap in by dropping matching imagesets into `Assets.xcassets` — no code change per asset.
+- [ ] `PlotDetailSheet` (SwiftUI overlay) shows the bound goal, its linked habits/tasks, completion shortcuts, and a "Re-plant" action when dead.
 
-### Per-build flow
+### Interactors & game logic
+- [ ] `EconomyInteractor` — single source of truth for `FarmState.gold`; `credit`, `spend(throws)`.
+- [ ] `FarmInteractor` — singleton bootstrap (FarmState + common-field plot), `bindPlot(to: Goal)`, contribution math (habit log = +health, task complete = +health priority-scaled), daily decay tick, wither→dead transitions, `replant` (gold cost), `purchaseCapacity` (gold cost).
+- [ ] `QuestInteractor` — `rollDaily` (idempotent per day; 3 slots from overdue/due tasks + pending habits, padded with commonFieldTend), `reroll` (per-slot gold cost escalating with `rerollCount`), `claim`, `expireOldQuests`, plus passive `notifyCompletion(referenceID:)` so any completion path auto-claims.
+- [ ] `HabitsInteractor.logToday` and `TasksInteractor.toggleDone` hook the farm-contribution + quest-notify side effects.
+- [ ] `AppLifecycleHandler` on foreground: advance daily decay against `lastDecayTick`, roll today's quests, expire yesterday's.
 
-Once prerequisites are done, every TestFlight upload goes:
+### Goal-create / edit
+- [ ] `FarmElementType` picker (Crop / Animal / Tree / Structure) on goal create + edit.
+- [ ] Over-capacity guardrail: opens `CapacityUpgradeSheet` to spend gold on `plotCapacity++`.
 
-1. **Bump build number** in the project (`CURRENT_PROJECT_VERSION`).
-   TestFlight rejects duplicate `(CFBundleShortVersionString, CFBundleVersion)`
-   pairs, so increment for every upload — even if the marketing version
-   (`MARKETING_VERSION`) doesn't change. A small script can `agvtool next-version
-   -all` for you.
-2. **Archive** with a Release configuration:
-   ```
-   xcodebuild -project LifePlanner.xcodeproj \
-     -scheme LifePlanner \
-     -destination 'generic/platform=iOS' \
-     -configuration Release \
-     -archivePath build/LifePlanner.xcarchive \
-     archive
-   ```
-3. **Export the IPA** for App Store distribution. Needs an
-   `ExportOptions.plist` file (commit it under `scripts/`):
-   ```xml
-   <?xml version="1.0" encoding="UTF-8"?>
-   <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-   <plist version="1.0"><dict>
-     <key>method</key><string>app-store-connect</string>
-     <key>teamID</key><string>YOUR_TEAM_ID</string>
-     <key>signingStyle</key><string>automatic</string>
-     <key>uploadBitcode</key><false/>
-     <key>uploadSymbols</key><true/>
-   </dict></plist>
-   ```
-   Then:
-   ```
-   xcodebuild -exportArchive \
-     -archivePath build/LifePlanner.xcarchive \
-     -exportPath build/export \
-     -exportOptionsPlist scripts/ExportOptions.plist
-   ```
-4. **Upload** via `xcrun altool` (the simplest path). With an app-specific
-   password:
-   ```
-   xcrun altool --upload-app \
-     --type ios \
-     --file build/export/LifePlanner.ipa \
-     --username APPLE_ID_EMAIL \
-     --password APP_SPECIFIC_PASSWORD
-   ```
-   Or with an API key (preferred — survives password rotations):
-   ```
-   xcrun altool --upload-app \
-     --type ios \
-     --file build/export/LifePlanner.ipa \
-     --apiKey KEY_ID \
-     --apiIssuer ISSUER_ID
-   ```
-   Apple's preferred newer path is `xcrun notarytool` for notarization +
-   `xcrun altool --upload-app` for App Store Connect. For TestFlight only,
-   `altool` alone is fine.
-5. **Wait for processing.** After upload, App Store Connect runs build
-   processing for ~5–30 min. Once done, the build appears under
-   TestFlight → iOS Builds.
-6. **Add testers.** TestFlight → Internal Testing → "+" → add yourself
-   (or a group). Internal testers are anyone on your team with App Store
-   Connect access — up to 100, instant, no review. External testers (up
-   to 10,000) require a one-time Beta App Review for the first build of
-   each marketing version.
-7. **Install on your phone.** Tester gets an email + push from the
-   TestFlight app → tap to install.
+### Common field
+- [ ] Singleton commonField plot absorbs contributions from habits/tasks not linked to any goal and emits a slow passive gold trickle when healthy.
 
-### To automate (after first manual run works)
+### Tests
+- [ ] `FarmInteractorTests` — bind, contribute, decay across days, wither→dead, replant cost.
+- [ ] `QuestInteractorTests` — rollDaily idempotency, reroll cost escalation, claim-on-completion, expire.
+- [ ] `EconomyInteractorTests` — credit / spend / insufficient-funds throw.
+- [ ] `GoalsInteractorTests` extension — creating a goal allocates a matching plot; over-capacity throws.
 
-Wrap steps 1–4 in `scripts/testflight.sh`. Suggested:
-- Read `TEAM_ID`, `APPLE_ID`, `APP_SPECIFIC_PASSWORD` (or API key triple)
-  from a `.env` file (gitignored).
-- Run `agvtool next-version -all`.
-- Archive → export → upload.
-- Echo "Build N uploaded — processing in App Store Connect."
+### Verification
+- [ ] `xcodebuild ... build test` green after each ordered step.
+- [ ] Manual sim walkthrough: open to Farm → create goals of each type → log habits / complete tasks → see plot health rise → re-roll a quest (debit gold) → auto-claim on task completion (credit gold) → force-advance decay → wither / die / re-plant → over-capacity flow → buy plot.
 
-### Known gotchas
+## Phase 2 — Visual identity & content
 
-- **Capabilities you'll add later that need to land BEFORE the first
-  archive** if possible (avoids profile re-issuance churn): App Group
-  entitlement (for Widgets), Push Notifications (for habit reminders),
-  iCloud (for SwiftData CloudKit). Adding them later forces a new
-  provisioning profile, which automatic signing handles but adds a delay.
-- **Match version with what's in App Store Connect.** If you change
-  `MARKETING_VERSION` from 1.0 → 1.1, the next external testing pass
-  needs another Beta App Review.
-- **`altool` is being phased out for upload eventually**, but as of Xcode
-  16 it still works. If/when Apple removes it, switch to Transporter or
-  the App Store Connect API directly.
+Once the v0.5.0 mechanics ship, the focus moves to making the farm look and feel like a game.
+
+- [ ] **AI-generated asset pack.** Lock palette, tile size, isometric vs. top-down. Generate per-state sprites for each `FarmElementType`. Each sprite drops into `Assets.xcassets` under the existing `AssetKeys` names — no code change required.
+- [ ] **Animation passes.** Idle wiggle / sway, contribution feedback (sparkle on health gain), wither shake, death dissolve.
+- [ ] **Ambient farm life.** Background NPCs (butterflies, birds) — pure flavor, no gameplay tie.
+- [ ] **Sound.** Light SFX on contribution / quest claim / re-roll. Optional ambient loop.
+
+## Phase 3 — Cosmetics economy
+
+Expand gold sinks beyond capacity.
+
+- [ ] **Farmer avatar customization.** Hats, outfits. Avatar wanders the farm idle path.
+- [ ] **Pets.** Unlockable companions that wander the farm. Pure flavor; no goal binding.
+- [ ] **Farmhouse cosmetics.** Roof colors, decor, exterior expansions.
+- [ ] **Cosmetic shop UI** reached from the HUD.
+
+## Phase 4 — Depth & retention
+
+- [ ] **Streaks → seasonal events.** Consecutive-day habit streaks unlock limited-time decorations.
+- [ ] **Quest variety.** Multi-step quests, weekly quests, themed chains (e.g., "harvest 5 mature crops this week").
+- [ ] **Difficulty / reward tuning.** Telemetry-driven adjustments to gold rewards, decay rate, capacity costs.
+- [ ] **Notifications.** Re-introduce task-due notifications (carry-over from old roadmap) plus farm-health alerts ("Your Crop is wilting").
+
+## Phase 5 — Platform
+
+- [ ] **iCloud sync.** Schema is already CloudKit-compatible. Flip the entitlement and switch to `ModelConfiguration(cloudKitDatabase:)`. Requires paid Apple Developer account.
+- [ ] **WidgetKit.** Today's quests widget; farm-snapshot widget.
+- [ ] **App Intents / Shortcuts.** "Roll today's quests", "Mark habit done", "Show farm".
+- [ ] **Spotlight.** Tasks searchable from system search.
+
+## Deferred / explicitly out of scope for v0.5.0
+
+- SwiftData migration (hard reset chosen for the v0.4.0 → v0.5.0 cutover; pre-existing local data is discarded).
+- Cosmetic systems (farmer, pets, farmhouse) — see Phase 3.
+- AI-generated final art — placeholder phase ships first; see Phase 2.
+- Habit weekly/custom cadence and target counts (carry-over from old roadmap; revisit after pivot lands).
+- Goal sub-goals & metric tracking (carry-over; revisit after pivot lands).
