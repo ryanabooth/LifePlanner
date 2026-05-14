@@ -7,6 +7,10 @@ struct GoalDraft {
     var targetDate: Date? = nil
     var status: GoalStatus = .active
     var farmElementType: FarmElementType = .crop
+    /// Empty / nil = no metric. Non-empty = track a numeric metric in this unit.
+    var metricUnit: String? = nil
+    /// 0 = open-ended metric (no completion target).
+    var metricTarget: Double = 0
 }
 
 protocol GoalsInteractor {
@@ -15,6 +19,16 @@ protocol GoalsInteractor {
     func setStatus(_ goal: DBModel.Goal, status: GoalStatus, in context: ModelContext)
     func delete(_ goal: DBModel.Goal, in context: ModelContext)
     func setLinks(_ goal: DBModel.Goal, tasks: [DBModel.Task], habits: [DBModel.Habit], in context: ModelContext)
+
+    /// Append a new sub-goal at the end of the parent's ordered list.
+    func addSubGoal(_ title: String, to goal: DBModel.Goal, in context: ModelContext)
+    /// Toggle done state. Going `false → true` pumps health into the parent's plot.
+    func toggleSubGoal(_ subGoal: DBModel.SubGoal, in context: ModelContext)
+    func deleteSubGoal(_ subGoal: DBModel.SubGoal, in context: ModelContext)
+
+    /// Add `amount` to the goal's metric value. Pumps health into the plot, the
+    /// same way logging a habit does. No-op if the goal doesn't have a metric.
+    func logMetricProgress(_ goal: DBModel.Goal, amount: Double, in context: ModelContext)
 }
 
 final class RealGoalsInteractor: GoalsInteractor {
@@ -33,7 +47,9 @@ final class RealGoalsInteractor: GoalsInteractor {
             why: draft.why?.nilIfBlank,
             targetDate: draft.targetDate,
             status: draft.status,
-            farmElementType: draft.farmElementType
+            farmElementType: draft.farmElementType,
+            metricUnit: draft.metricUnit?.nilIfBlank,
+            metricTarget: max(0, draft.metricTarget)
         )
         context.insert(goal)
         // Allocate a farm plot. If at capacity, silently skip — Step 7's UI will
@@ -49,6 +65,8 @@ final class RealGoalsInteractor: GoalsInteractor {
         goal.why = draft.why?.nilIfBlank
         goal.targetDate = draft.targetDate
         goal.status = draft.status
+        goal.metricUnit = draft.metricUnit?.nilIfBlank
+        goal.metricTarget = max(0, draft.metricTarget)
         // Changing farmElementType after the fact isn't supported in v1; the
         // existing plot keeps its sprite. Picker UI in Step 7 will disable the
         // control for goals that already have a bound plot.
@@ -74,6 +92,55 @@ final class RealGoalsInteractor: GoalsInteractor {
         goal.updatedAt = Date()
         context.saveQuietly()
     }
+
+    // MARK: - Sub-goals
+
+    func addSubGoal(_ title: String, to goal: DBModel.Goal, in context: ModelContext) {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let nextOrder = (goal.subGoals ?? []).map(\.order).max().map { $0 + 1 } ?? 0
+        let sub = DBModel.SubGoal(title: trimmed, order: nextOrder, goal: goal)
+        context.insert(sub)
+        goal.updatedAt = Date()
+        context.saveQuietly()
+    }
+
+    func toggleSubGoal(_ subGoal: DBModel.SubGoal, in context: ModelContext) {
+        let wasDone = subGoal.isDone
+        subGoal.isDone.toggle()
+        subGoal.updatedAt = Date()
+        // Completion (false → true) pumps health into the parent's plot. Reverting
+        // a completion does not refund (consistent with task/habit completion).
+        if !wasDone, let parent = subGoal.goal {
+            farm.applyContribution(
+                amount: FarmTuning.taskBaseContribution,
+                toGoals: [parent],
+                in: context
+            )
+            parent.updatedAt = Date()
+        }
+        context.saveQuietly()
+    }
+
+    func deleteSubGoal(_ subGoal: DBModel.SubGoal, in context: ModelContext) {
+        subGoal.goal?.updatedAt = Date()
+        context.delete(subGoal)
+        context.saveQuietly()
+    }
+
+    // MARK: - Metric
+
+    func logMetricProgress(_ goal: DBModel.Goal, amount: Double, in context: ModelContext) {
+        guard goal.hasMetric, amount > 0 else { return }
+        goal.metricValue += amount
+        goal.updatedAt = Date()
+        farm.applyContribution(
+            amount: FarmTuning.habitContribution,
+            toGoals: [goal],
+            in: context
+        )
+        context.saveQuietly()
+    }
 }
 
 final class StubGoalsInteractor: GoalsInteractor {
@@ -82,6 +149,10 @@ final class StubGoalsInteractor: GoalsInteractor {
     func setStatus(_ goal: DBModel.Goal, status: GoalStatus, in context: ModelContext) {}
     func delete(_ goal: DBModel.Goal, in context: ModelContext) {}
     func setLinks(_ goal: DBModel.Goal, tasks: [DBModel.Task], habits: [DBModel.Habit], in context: ModelContext) {}
+    func addSubGoal(_ title: String, to goal: DBModel.Goal, in context: ModelContext) {}
+    func toggleSubGoal(_ subGoal: DBModel.SubGoal, in context: ModelContext) {}
+    func deleteSubGoal(_ subGoal: DBModel.SubGoal, in context: ModelContext) {}
+    func logMetricProgress(_ goal: DBModel.Goal, amount: Double, in context: ModelContext) {}
 }
 
 private extension String {
