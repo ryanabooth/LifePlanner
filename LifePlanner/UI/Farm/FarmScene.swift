@@ -14,6 +14,9 @@ final class FarmScene: SKScene {
     /// `PlotDetailSheet`. Empty in v1 (tap is a no-op until the sheet exists).
     let tappedPlotID = PassthroughSubject<UUID, Never>()
 
+    /// Published when the user taps the farmhouse — triggers the dev menu.
+    let tappedFarmhouse = PassthroughSubject<Void, Never>()
+
     // HUD nodes are eager stored properties because `didChangeSize` fires during
     // `init(size:)` — before `didMove(to:)` — and the layout helpers read them.
     // Building them in `setupHUD()` post-init would force-unwrap nils.
@@ -131,7 +134,22 @@ final class FarmScene: SKScene {
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
-        let hit = nodes(at: location).first { $0.userData?["plotID"] != nil }
+        let hitNodes = nodes(at: location)
+
+        let farmhouseTapped = hitNodes.contains { node in
+            var current: SKNode? = node
+            while let n = current {
+                if n === farmhouseDecoration { return true }
+                current = n.parent
+            }
+            return false
+        }
+        if farmhouseTapped {
+            tappedFarmhouse.send()
+            return
+        }
+
+        let hit = hitNodes.first { $0.userData?["plotID"] != nil }
         guard
             let idString = hit?.userData?["plotID"] as? String,
             let id = UUID(uuidString: idString)
