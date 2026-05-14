@@ -6,7 +6,7 @@ import SwiftData
 struct ShowFarmIntent: AppIntent {
 
     static let title: LocalizedStringResource = "Open Farm"
-    static let description = IntentDescription("Opens LifePlanner to your farm.")
+    static let description = IntentDescription("Opens Tiller to your farm.")
     static let openAppWhenRun: Bool = true
 
     func perform() async throws -> some IntentResult {
@@ -21,7 +21,7 @@ struct RollTodaysQuestsIntent: AppIntent {
 
     static let title: LocalizedStringResource = "Roll Today's Quests"
     static let description = IntentDescription(
-        "Opens LifePlanner and rolls today's quest batch if not yet rolled."
+        "Opens Tiller and rolls today's quest batch if not yet rolled."
     )
     static let openAppWhenRun: Bool = true
 

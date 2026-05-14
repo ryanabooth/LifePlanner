@@ -1,6 +1,6 @@
-# LifePlanner Roadmap
+# Tiller Roadmap
 
-LifePlanner is pivoting from a four-tab personal organizer into a productivity *farming simulator*. Real goals, habits, and tasks drive in-game progression on a SpriteKit farm. Living doc — edit freely.
+Tiller is pivoting from a four-tab personal organizer into a productivity *farming simulator*. Real goals, habits, and tasks drive in-game progression on a SpriteKit farm. Living doc — edit freely.
 
 ## Vision
 
@@ -83,7 +83,7 @@ Expand gold sinks beyond capacity.
 
 - [ ] **iCloud sync.** Schema is already CloudKit-compatible. Flip the entitlement and switch to `ModelConfiguration(cloudKitDatabase:)`. Requires paid Apple Developer account.
 - [x] **WidgetKit.** Today's quests widget scaffold in `QuestsWidget/` (`QuestEntry`, `QuestProvider`, `QuestsWidgetView`, `QuestsWidgetBundle`). Remaining: add Widget Extension target in Xcode, enable App Groups on both targets, update `ModelContainer.appModelContainer()` to use the shared group URL.
-- [x] **App Intents / Shortcuts.** `ShowFarmIntent`, `RollTodaysQuestsIntent`, `MarkHabitDoneIntent` (performs background SwiftData write — no app open needed). `HabitEntity` + `HabitEntityQuery` for parameter resolution. `LifePlannerShortcuts: AppShortcutsProvider` registers all three with Siri and the Shortcuts app.
+- [x] **App Intents / Shortcuts.** `ShowFarmIntent`, `RollTodaysQuestsIntent`, `MarkHabitDoneIntent` (performs background SwiftData write — no app open needed). `HabitEntity` + `HabitEntityQuery` for parameter resolution. `TillerShortcuts: AppShortcutsProvider` registers all three with Siri and the Shortcuts app.
 - [x] **Spotlight.** `SpotlightIndexer` actor indexes open tasks via `CoreSpotlight`; wired into `TasksInteractor` (add/update/done/delete). `SystemEventsHandler` calls `reindexAll` on every foreground.
 
 ## Phase 6 — Carry-over polish

@@ -111,6 +111,8 @@ private struct QuestRow: View {
     let canAfford: Bool
     let onReroll: () -> Void
 
+    @State private var flashGreen = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
@@ -142,6 +144,18 @@ private struct QuestRow: View {
             }
         }
         .padding(.vertical, 4)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color.green.opacity(flashGreen ? 0.22 : 0))
+                .allowsHitTesting(false)
+        )
+        .onChange(of: quest.state) { _, newState in
+            guard newState == .completed else { return }
+            withAnimation(.easeIn(duration: 0.1)) { flashGreen = true }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
+                withAnimation(.easeOut(duration: 0.45)) { flashGreen = false }
+            }
+        }
     }
 
     private var headline: String {

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# scripts/testflight.sh — one-command TestFlight upload for LifePlanner.
+# scripts/testflight.sh — one-command TestFlight upload for Tiller.
 #
 # Runs the four steps from ROADMAP / TestFlight notes:
 #   1. agvtool next-version -all   (bump CURRENT_PROJECT_VERSION)

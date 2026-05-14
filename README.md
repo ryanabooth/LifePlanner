@@ -1,4 +1,4 @@
-# LifePlanner
+# Tiller
 
 A native iOS personal organizer (tasks, contacts, goals, habits) built in
 SwiftUI with the Observation framework and SwiftData.

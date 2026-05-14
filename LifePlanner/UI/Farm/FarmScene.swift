@@ -51,6 +51,10 @@ final class FarmScene: SKScene {
     private let plotsContainer = SKNode()
     private var plotNodes: [UUID: PlotNode] = [:]
 
+    /// Tracks the last-seen gold so `snapshot` can detect increases and fire
+    /// the celebration. Starts at -1 so the very first snapshot doesn't pulse.
+    private var lastKnownGold: Int = -1
+
     /// Decorative butterflies + birds that wander the scene background.
     /// Populated once in `didMove`; runs forever via its own SKActions.
     private let ambientLife = AmbientLifeController()
@@ -103,7 +107,13 @@ final class FarmScene: SKScene {
     /// reuses existing `PlotNode`s when their `plotID` is still present, only
     /// creating / destroying nodes when the plot set changes.
     func snapshot(plots: [DBModel.FarmPlot], gold: Int, capacity: Int) {
+        let goldIncreased = lastKnownGold >= 0 && gold > lastKnownGold
+        lastKnownGold = gold
         goldLabel.text = "🪙 \(gold)"
+        if goldIncreased {
+            pulseGoldLabel()
+            burstConfetti(at: goldLabel.position)
+        }
         capacityLabel.text = "Capacity: \(plots.filter { $0.kind != .commonField }.count) / \(capacity)"
 
         let sorted = plots.sorted { $0.gridX < $1.gridX }
@@ -155,6 +165,56 @@ final class FarmScene: SKScene {
             let id = UUID(uuidString: idString)
         else { return }
         tappedPlotID.send(id)
+    }
+
+    // MARK: - Celebration
+
+    private func pulseGoldLabel() {
+        goldLabel.removeAction(forKey: "goldPulse")
+        let duration: TimeInterval = 0.55
+        let pulse = SKAction.customAction(withDuration: duration) { node, elapsed in
+            guard let label = node as? SKLabelNode else { return }
+            let t = elapsed / CGFloat(duration)
+            // 0→0.3: ramp to peak; 0.3→1.0: ease back
+            let phase: CGFloat = t < 0.3 ? t / 0.3 : 1.0 - (t - 0.3) / 0.7
+            label.fontColor = UIColor(red: 1.0, green: 1.0, blue: 1.0 - phase * 0.85, alpha: 1.0)
+            label.setScale(1.0 + phase * 0.35)
+        }
+        let restore = SKAction.run { [weak goldLabel] in
+            goldLabel?.fontColor = .white
+            goldLabel?.setScale(1.0)
+        }
+        goldLabel.run(.sequence([pulse, restore]), withKey: "goldPulse")
+    }
+
+    private func burstConfetti(at origin: CGPoint) {
+        let colors: [UIColor] = [.systemYellow, .systemOrange, .systemGreen, .white, .systemCyan, .systemPink]
+        let count = 18
+        for i in 0..<count {
+            let particle = SKShapeNode(rectOf: CGSize(width: 6, height: 6), cornerRadius: 1)
+            particle.fillColor = colors[i % colors.count]
+            particle.strokeColor = .clear
+            particle.position = origin
+            particle.zPosition = 20
+            particle.zRotation = CGFloat.random(in: 0 ..< .pi * 2)
+            addChild(particle)
+
+            let angle = CGFloat(i) / CGFloat(count) * .pi * 2 + CGFloat.random(in: -0.2...0.2)
+            let distance = CGFloat.random(in: 55...110)
+            let move = SKAction.moveBy(
+                x: cos(angle) * distance,
+                y: sin(angle) * distance,
+                duration: 0.65
+            )
+            move.timingMode = .easeOut
+            let spin = SKAction.rotate(byAngle: CGFloat.random(in: -.pi * 2 ... .pi * 2), duration: 0.65)
+            let fade = SKAction.sequence([
+                .fadeIn(withDuration: 0.05),
+                .wait(forDuration: 0.2),
+                .fadeOut(withDuration: 0.4)
+            ])
+            particle.run(.sequence([.group([move, spin, fade]), .removeFromParent()]))
+        }
     }
 
     // MARK: - Layout
