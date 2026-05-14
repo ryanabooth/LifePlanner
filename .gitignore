@@ -57,3 +57,6 @@ fastlane/Preview.html
 fastlane/screenshots
 fastlane/test_output
 fastlane/app_archive
+
+# TestFlight upload secrets — never commit
+scripts/.env
