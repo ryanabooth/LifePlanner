@@ -1,0 +1,267 @@
+import Foundation
+import SwiftData
+
+enum QuestError: Error {
+    case insufficientGold(have: Int, need: Int)
+    case notSatisfiable
+    case alreadyClaimed
+}
+
+enum QuestTuning {
+    static let slotsPerDay = 3
+
+    static let taskBaseReward = 5
+    static let taskPriorityBonus: [TaskPriority: Int] = [
+        .low: 0,
+        .normal: 5,
+        .high: 10
+    ]
+    static let habitReward = 5
+    static let commonFieldReward = 3
+
+    static let rerollBaseCost = 3
+    static let rerollCostStep = 2
+
+    static func rerollCost(for rerollCount: Int) -> Int {
+        rerollBaseCost + rerollCount * rerollCostStep
+    }
+}
+
+protocol QuestInteractor {
+    /// Idempotent for the day. Returns up to 3 quests for `day`; creates any missing slots.
+    @discardableResult
+    func rollDaily(on day: Date, in context: ModelContext) -> [DBModel.Quest]
+
+    /// Re-roll a single quest slot in place. Costs gold; replaces the slot's
+    /// `referenceID`, `kind`, `goldReward`, and bumps `rerollCount`.
+    func reroll(_ quest: DBModel.Quest, in context: ModelContext) throws
+
+    /// Mark a quest completed and credit its reward. Throws if the underlying
+    /// task/habit/common-field hasn't been satisfied.
+    func claim(_ quest: DBModel.Quest, in context: ModelContext) throws
+
+    /// Auto-claim any active quest whose `referenceID` matches. Silent if none.
+    /// Called from Habits/Tasks `toggleDone` so completion in any UI surface
+    /// pays out without an explicit claim step.
+    func notifyCompletion(referenceID: UUID, in context: ModelContext)
+
+    /// Set state = .expired on every still-active quest dated before `day`.
+    func expireOldQuests(on day: Date, in context: ModelContext)
+}
+
+final class RealQuestInteractor: QuestInteractor {
+
+    private let economy: EconomyInteractor
+    private let calendar: Calendar
+    private let rng: () -> Int
+
+    init(
+        economy: EconomyInteractor = RealEconomyInteractor(),
+        calendar: Calendar = .current,
+        // Injectable for deterministic tests; production uses a real random seed.
+        rng: @escaping () -> Int = { Int.random(in: 0..<Int.max) }
+    ) {
+        self.economy = economy
+        self.calendar = calendar
+        self.rng = rng
+    }
+
+    // MARK: - rollDaily
+
+    @discardableResult
+    func rollDaily(on day: Date, in context: ModelContext) -> [DBModel.Quest] {
+        let today = calendar.startOfDay(for: day)
+        let existing = fetchQuests(on: today, in: context)
+        if existing.count >= QuestTuning.slotsPerDay {
+            return existing.sorted { $0.slot < $1.slot }
+        }
+
+        let usedRefs = Set(existing.compactMap(\.referenceID))
+        let pool = candidatePool(today: today, excluding: usedRefs, in: context)
+        var picks = shuffled(pool, count: QuestTuning.slotsPerDay - existing.count)
+
+        var quests = existing
+        let occupiedSlots = Set(existing.map(\.slot))
+        for slot in 0..<QuestTuning.slotsPerDay where !occupiedSlots.contains(slot) {
+            let candidate = picks.popLast() ?? .commonField
+            let quest = makeQuest(slot: slot, day: today, from: candidate)
+            context.insert(quest)
+            quests.append(quest)
+        }
+        return quests.sorted { $0.slot < $1.slot }
+    }
+
+    // MARK: - reroll
+
+    func reroll(_ quest: DBModel.Quest, in context: ModelContext) throws {
+        let cost = QuestTuning.rerollCost(for: quest.rerollCount)
+        do {
+            try economy.spend(cost, reason: "quest-reroll", in: context)
+        } catch EconomyError.insufficientGold(let have, let need) {
+            throw QuestError.insufficientGold(have: have, need: need)
+        }
+
+        let day = calendar.startOfDay(for: quest.day)
+        let todays = fetchQuests(on: day, in: context)
+        let used = Set(todays.compactMap(\.referenceID))
+            .union([quest.referenceID].compactMap { $0 })
+        let pool = candidatePool(today: day, excluding: used, in: context)
+        let pick = shuffled(pool, count: 1).first ?? .commonField
+        apply(candidate: pick, to: quest)
+        quest.rerollCount += 1
+        quest.state = .active
+        quest.updatedAt = Date()
+    }
+
+    // MARK: - claim / notifyCompletion
+
+    func claim(_ quest: DBModel.Quest, in context: ModelContext) throws {
+        guard quest.state == .active else { throw QuestError.alreadyClaimed }
+        guard isSatisfied(quest, in: context) else { throw QuestError.notSatisfiable }
+        credit(quest, in: context)
+    }
+
+    func notifyCompletion(referenceID: UUID, in context: ModelContext) {
+        let today = calendar.startOfDay(for: Date())
+        let todays = fetchQuests(on: today, in: context)
+        for quest in todays where quest.state == .active && quest.referenceID == referenceID {
+            credit(quest, in: context)
+        }
+    }
+
+    private func credit(_ quest: DBModel.Quest, in context: ModelContext) {
+        quest.state = .completed
+        quest.updatedAt = Date()
+        economy.credit(quest.goldReward, reason: "quest-\(quest.kind)", in: context)
+    }
+
+    // MARK: - expireOldQuests
+
+    func expireOldQuests(on day: Date, in context: ModelContext) {
+        let today = calendar.startOfDay(for: day)
+        let all = (try? context.fetch(FetchDescriptor<DBModel.Quest>())) ?? []
+        for quest in all where quest.state == .active && quest.day < today {
+            quest.state = .expired
+            quest.updatedAt = Date()
+        }
+    }
+
+    // MARK: - Candidate generation
+
+    /// Internal candidate descriptor — what a quest slot can hold before persistence.
+    private enum Candidate {
+        case task(DBModel.Task)
+        case habit(DBModel.Habit)
+        case commonField
+    }
+
+    private func candidatePool(
+        today: Date,
+        excluding usedRefs: Set<UUID>,
+        in context: ModelContext
+    ) -> [Candidate] {
+        var pool: [Candidate] = []
+        let endOfToday = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+
+        // Tasks: open + due today/overdue + not already a quest slot today.
+        let openTasks = (try? context.fetch(FetchDescriptor<DBModel.Task>(
+            predicate: #Predicate { $0.isDone == false }
+        ))) ?? []
+        for task in openTasks where !usedRefs.contains(task.id) {
+            guard let due = task.dueDate, due < endOfToday else { continue }
+            pool.append(.task(task))
+        }
+
+        // Habits: non-archived + not logged today + not already used.
+        let activeHabits = (try? context.fetch(FetchDescriptor<DBModel.Habit>(
+            predicate: #Predicate { $0.archived == false }
+        ))) ?? []
+        for habit in activeHabits where !usedRefs.contains(habit.id) {
+            if !habit.isDone(on: today, calendar: calendar) {
+                pool.append(.habit(habit))
+            }
+        }
+
+        return pool
+    }
+
+    private func shuffled(_ pool: [Candidate], count: Int) -> [Candidate] {
+        guard !pool.isEmpty, count > 0 else { return [] }
+        var copy = pool
+        // Fisher-Yates using injected RNG so tests can be deterministic.
+        for i in stride(from: copy.count - 1, through: 1, by: -1) {
+            let j = rng() % (i + 1)
+            copy.swapAt(i, j)
+        }
+        return Array(copy.prefix(count))
+    }
+
+    private func makeQuest(slot: Int, day: Date, from candidate: Candidate) -> DBModel.Quest {
+        let quest = DBModel.Quest(day: day, slot: slot)
+        apply(candidate: candidate, to: quest)
+        return quest
+    }
+
+    private func apply(candidate: Candidate, to quest: DBModel.Quest) {
+        switch candidate {
+        case .task(let task):
+            quest.kind = .taskDue
+            quest.referenceID = task.id
+            quest.goldReward = QuestTuning.taskBaseReward
+                + (QuestTuning.taskPriorityBonus[task.priority] ?? 0)
+        case .habit(let habit):
+            quest.kind = .habitDue
+            quest.referenceID = habit.id
+            quest.goldReward = QuestTuning.habitReward
+        case .commonField:
+            quest.kind = .commonFieldTend
+            quest.referenceID = nil
+            quest.goldReward = QuestTuning.commonFieldReward
+        }
+    }
+
+    // MARK: - Satisfaction check
+
+    private func isSatisfied(_ quest: DBModel.Quest, in context: ModelContext) -> Bool {
+        switch quest.kind {
+        case .taskDue:
+            guard let refID = quest.referenceID else { return false }
+            let match = (try? context.fetch(FetchDescriptor<DBModel.Task>(
+                predicate: #Predicate { $0.id == refID }
+            )))?.first
+            return match?.isDone == true
+        case .habitDue:
+            guard let refID = quest.referenceID else { return false }
+            let match = (try? context.fetch(FetchDescriptor<DBModel.Habit>(
+                predicate: #Predicate { $0.id == refID }
+            )))?.first
+            return match?.isDone(on: quest.day, calendar: calendar) == true
+        case .commonFieldTend:
+            // Considered satisfiable if the common field is at least mature
+            // (encourages keeping it watered with miscellaneous completions).
+            let plots = (try? context.fetch(FetchDescriptor<DBModel.FarmPlot>())) ?? []
+            return plots.first { $0.kind == .commonField }?
+                .health ?? 0 >= FarmTuning.matureThreshold
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func fetchQuests(on day: Date, in context: ModelContext) -> [DBModel.Quest] {
+        let today = calendar.startOfDay(for: day)
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today) ?? today
+        let fetch = FetchDescriptor<DBModel.Quest>(
+            predicate: #Predicate { $0.day >= today && $0.day < tomorrow }
+        )
+        return (try? context.fetch(fetch)) ?? []
+    }
+}
+
+final class StubQuestInteractor: QuestInteractor {
+    @discardableResult
+    func rollDaily(on day: Date, in context: ModelContext) -> [DBModel.Quest] { [] }
+    func reroll(_ quest: DBModel.Quest, in context: ModelContext) throws {}
+    func claim(_ quest: DBModel.Quest, in context: ModelContext) throws {}
+    func notifyCompletion(referenceID: UUID, in context: ModelContext) {}
+    func expireOldQuests(on day: Date, in context: ModelContext) {}
+}

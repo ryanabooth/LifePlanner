@@ -20,13 +20,16 @@ final class RealTasksInteractor: TasksInteractor {
 
     private let scheduler: NotificationScheduler
     private let farm: FarmInteractor
+    private let quests: QuestInteractor
 
     init(
         scheduler: NotificationScheduler = RealNotificationScheduler(),
-        farm: FarmInteractor = StubFarmInteractor()
+        farm: FarmInteractor = StubFarmInteractor(),
+        quests: QuestInteractor = StubQuestInteractor()
     ) {
         self.scheduler = scheduler
         self.farm = farm
+        self.quests = quests
     }
 
     func add(_ draft: TaskDraft, in context: ModelContext) {
@@ -62,6 +65,7 @@ final class RealTasksInteractor: TasksInteractor {
         if task.isDone {
             cancelReminder(id: task.id)
             farm.applyTaskCompletion(task, in: context)
+            quests.notifyCompletion(referenceID: task.id, in: context)
         } else {
             syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: false)
         }

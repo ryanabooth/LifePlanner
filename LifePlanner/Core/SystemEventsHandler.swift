@@ -1,5 +1,6 @@
 import UIKit
 import Combine
+import SwiftData
 
 @MainActor
 protocol SystemEventsHandler {
@@ -11,14 +12,17 @@ protocol SystemEventsHandler {
 struct RealSystemEventsHandler: SystemEventsHandler {
 
     let container: DIContainer
+    let modelContainer: ModelContainer
     let deepLinksHandler: DeepLinksHandler
     let pushNotificationsHandler: PushNotificationsHandler
     private let cancelBag = CancelBag()
 
     init(container: DIContainer,
+         modelContainer: ModelContainer,
          deepLinksHandler: DeepLinksHandler,
          pushNotificationsHandler: PushNotificationsHandler) {
         self.container = container
+        self.modelContainer = modelContainer
         self.deepLinksHandler = deepLinksHandler
         self.pushNotificationsHandler = pushNotificationsHandler
         installKeyboardHeightObserver()
@@ -41,10 +45,27 @@ struct RealSystemEventsHandler: SystemEventsHandler {
     func sceneDidBecomeActive() {
         container.appState[\.system.isActive] = true
         container.interactors.userPermissions.resolveStatus(for: .notifications)
+        runDailyTick()
     }
 
     func sceneWillResignActive() {
         container.appState[\.system.isActive] = false
+    }
+
+    /// Foreground daily-tick: applies plot decay for elapsed days, rolls today's
+    /// quests if not yet rolled, and expires yesterday's leftovers. Idempotent
+    /// across multiple foregrounds on the same calendar day — `FarmInteractor`
+    /// guards on `lastDecayTick` and `QuestInteractor.rollDaily` guards on the
+    /// day-keyed slot count.
+    private func runDailyTick() {
+        let context = modelContainer.mainContext
+        let now = Date()
+        container.interactors.farm.applyDailyDecay(now: now, in: context)
+        container.interactors.quests.expireOldQuests(on: now, in: context)
+        container.interactors.quests.rollDaily(on: now, in: context)
+        if context.hasChanges {
+            try? context.save()
+        }
     }
 }
 
