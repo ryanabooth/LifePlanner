@@ -83,13 +83,16 @@ protocol FarmInteractor {
 final class RealFarmInteractor: FarmInteractor {
 
     private let economy: EconomyInteractor
+    private let scheduler: NotificationScheduler
     private let calendar: Calendar
 
     init(
         economy: EconomyInteractor = RealEconomyInteractor(),
+        scheduler: NotificationScheduler = StubNotificationScheduler(),
         calendar: Calendar = .current
     ) {
         self.economy = economy
+        self.scheduler = scheduler
         self.calendar = calendar
     }
 
@@ -234,6 +237,7 @@ final class RealFarmInteractor: FarmInteractor {
 
     private func decay(plot: DBModel.FarmPlot, days: Int) {
         guard plot.state != .dead else { return }
+        let prevState = plot.state
         let totalDecay = days * FarmTuning.decayPerDay
         plot.health = clamp(plot.health - totalDecay)
         plot.updatedAt = Date()
@@ -252,6 +256,37 @@ final class RealFarmInteractor: FarmInteractor {
         } else if plot.health < FarmTuning.matureThreshold, plot.state == .mature {
             plot.state = .growing
         }
+
+        schedulePlotNotificationIfNeeded(plot: plot, prevState: prevState)
+    }
+
+    private func schedulePlotNotificationIfNeeded(
+        plot: DBModel.FarmPlot,
+        prevState: PlotState
+    ) {
+        guard plot.kind != .commonField else { return }
+        let id = plot.id
+        let label = plot.kind.label
+
+        if prevState != .withered, plot.state == .withered {
+            Task.detached { [scheduler] in
+                await scheduler.schedulePlotAlert(
+                    plotID: id,
+                    title: "\(label) is wilting",
+                    body: "Log a habit or complete a task before it dies.",
+                    fireAt: Calendar.current.nextMorning
+                )
+            }
+        } else if prevState != .dead, plot.state == .dead {
+            Task.detached { [scheduler] in
+                await scheduler.schedulePlotAlert(
+                    plotID: id,
+                    title: "\(label) has died",
+                    body: "Open the app to replant it and get back on track.",
+                    fireAt: Calendar.current.nextMorning
+                )
+            }
+        }
     }
 
     // MARK: - Replant + upgrade
@@ -263,6 +298,8 @@ final class RealFarmInteractor: FarmInteractor {
         plot.state = .growing
         plot.lastContribution = Date()
         plot.updatedAt = Date()
+        let id = plot.id
+        Task.detached { [scheduler] in await scheduler.cancelPlotAlert(plotID: id) }
     }
 
     func purchaseCapacity(in context: ModelContext) throws {
@@ -283,6 +320,14 @@ final class RealFarmInteractor: FarmInteractor {
 
     private func clamp(_ value: Int) -> Int {
         max(FarmTuning.healthMin, min(FarmTuning.healthMax, value))
+    }
+}
+
+private extension Calendar {
+    /// 9 AM tomorrow — used as the fire time for plot-health alerts.
+    var nextMorning: Date {
+        let tomorrow = date(byAdding: .day, value: 1, to: Date()) ?? Date()
+        return date(bySettingHour: 9, minute: 0, second: 0, of: tomorrow) ?? tomorrow
     }
 }
 

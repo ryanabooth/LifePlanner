@@ -16,21 +16,39 @@ protocol HabitsInteractor {
     func toggleDone(_ habit: DBModel.Habit, on day: Date, in context: ModelContext)
 }
 
+enum StreakTuning {
+    static let milestones = [7, 14, 30, 60, 100]
+
+    static func bonus(at days: Int) -> Int {
+        switch days {
+        case 7:   return 10
+        case 14:  return 20
+        case 30:  return 50
+        case 60:  return 100
+        case 100: return 200
+        default:  return 0
+        }
+    }
+}
+
 final class RealHabitsInteractor: HabitsInteractor {
 
     private let calendar: Calendar
     private let scheduler: NotificationScheduler
+    private let economy: EconomyInteractor
     private let farm: FarmInteractor
     private let quests: QuestInteractor
 
     init(
         calendar: Calendar = .current,
         scheduler: NotificationScheduler = RealNotificationScheduler(),
+        economy: EconomyInteractor = RealEconomyInteractor(),
         farm: FarmInteractor = StubFarmInteractor(),
         quests: QuestInteractor = StubQuestInteractor()
     ) {
         self.calendar = calendar
         self.scheduler = scheduler
+        self.economy = economy
         self.farm = farm
         self.quests = quests
     }
@@ -88,8 +106,42 @@ final class RealHabitsInteractor: HabitsInteractor {
             context.insert(entry)
             farm.applyHabitCompletion(habit, in: context)
             quests.notifyCompletion(referenceID: habit.id, in: context)
+            quests.checkFarmQuests(in: context)
         }
         habit.updatedAt = Date()
+        recomputeStreak(for: habit, on: day)
+        checkStreakMilestone(for: habit, in: context)
+    }
+
+    // MARK: - Streak helpers
+
+    private func recomputeStreak(for habit: DBModel.Habit, on baseDay: Date) {
+        let entryDays = Set((habit.entries ?? []).map { calendar.startOfDay(for: $0.date) })
+        var streak = 0
+        var expected = calendar.startOfDay(for: baseDay)
+        while entryDays.contains(expected) {
+            streak += 1
+            guard let prev = calendar.date(byAdding: .day, value: -1, to: expected) else { break }
+            expected = prev
+        }
+        habit.currentStreak = streak
+        if streak > habit.longestStreak { habit.longestStreak = streak }
+    }
+
+    private func checkStreakMilestone(for habit: DBModel.Habit, in context: ModelContext) {
+        let streak = habit.currentStreak
+        guard streak > 0 else { return }
+        guard let milestone = StreakTuning.milestones
+            .filter({ $0 <= streak && $0 > habit.lastStreakMilestone })
+            .max()
+        else { return }
+        let bonus = StreakTuning.bonus(at: milestone)
+        economy.credit(bonus, reason: "streak-\(habit.id)-\(milestone)", in: context)
+        habit.lastStreakMilestone = milestone
+        let title = habit.title
+        Task.detached { [scheduler] in
+            await scheduler.scheduleStreakMilestone(habitTitle: title, streak: milestone, bonus: bonus)
+        }
     }
 
     private func syncReminder(for habit: DBModel.Habit) {

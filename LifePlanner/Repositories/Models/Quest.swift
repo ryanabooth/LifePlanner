@@ -9,6 +9,10 @@ enum QuestKind: Int, Codable, CaseIterable {
     case habitDue = 1
     /// Generic tend-the-common-field quest. `referenceID` = nil.
     case commonFieldTend = 2
+    /// Farm-state quest: have ≥ `QuestTuning.harvestMatureThreshold` mature
+    /// non-common plots simultaneously. `referenceID` = nil.
+    /// Auto-claimed by `QuestInteractor.checkFarmQuests` after any contribution.
+    case harvestMature = 3
 }
 
 /// Lifecycle state for a daily quest slot.

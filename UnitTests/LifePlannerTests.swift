@@ -7,6 +7,9 @@ actor FakeNotificationScheduler: NotificationScheduler {
     private(set) var cancelled: [UUID] = []
     private(set) var scheduledTasks: [(id: UUID, title: String, fireDate: Date)] = []
     private(set) var cancelledTasks: [UUID] = []
+    private(set) var plotAlerts: [(id: UUID, title: String)] = []
+    private(set) var cancelledPlots: [UUID] = []
+    private(set) var streakMilestones: [(habitTitle: String, streak: Int, bonus: Int)] = []
 
     func scheduleHabitReminder(habitID: UUID, title: String, time: Date) async {
         scheduled.append((habitID, title, time))
@@ -22,6 +25,18 @@ actor FakeNotificationScheduler: NotificationScheduler {
 
     func cancelTaskDue(taskID: UUID) async {
         cancelledTasks.append(taskID)
+    }
+
+    func schedulePlotAlert(plotID: UUID, title: String, body: String, fireAt: Date) async {
+        plotAlerts.append((plotID, title))
+    }
+
+    func cancelPlotAlert(plotID: UUID) async {
+        cancelledPlots.append(plotID)
+    }
+
+    func scheduleStreakMilestone(habitTitle: String, streak: Int, bonus: Int) async {
+        streakMilestones.append((habitTitle, streak, bonus))
     }
 }
 
@@ -511,6 +526,192 @@ final class LifePlannerTests: XCTestCase {
         XCTAssertEqual(plot.health, FarmTuning.initialHealth)
         XCTAssertEqual(economy.balance(in: context), 0)
     }
+
+    // MARK: - Streaks
+
+    @MainActor
+    func test_habit_streakIncrements() throws {
+        let container = try ModelContainer(
+            for: DBModel.Habit.self, DBModel.HabitLogEntry.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let interactor = RealHabitsInteractor(scheduler: StubNotificationScheduler())
+
+        interactor.add(HabitDraft(title: "Run"), in: context)
+        try context.save()
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let yesterday = cal.date(byAdding: .day, value: -1, to: today)!
+        let twoDaysAgo = cal.date(byAdding: .day, value: -2, to: today)!
+
+        interactor.toggleDone(habit, on: twoDaysAgo, in: context)
+        interactor.toggleDone(habit, on: yesterday, in: context)
+        interactor.toggleDone(habit, on: today, in: context)
+        try context.save()
+
+        XCTAssertEqual(habit.currentStreak, 3)
+        XCTAssertEqual(habit.longestStreak, 3)
+    }
+
+    @MainActor
+    func test_habit_streakGapPreventsChaining() throws {
+        let container = try ModelContainer(
+            for: DBModel.Habit.self, DBModel.HabitLogEntry.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let interactor = RealHabitsInteractor(scheduler: StubNotificationScheduler())
+
+        interactor.add(HabitDraft(title: "Read"), in: context)
+        try context.save()
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        let threeDaysAgo = cal.date(byAdding: .day, value: -3, to: today)!
+
+        // Logged three days ago — streak at that point = 1.
+        interactor.toggleDone(habit, on: threeDaysAgo, in: context)
+        try context.save()
+        XCTAssertEqual(habit.currentStreak, 1, "streak is 1 for the isolated logged day")
+        XCTAssertEqual(habit.longestStreak, 1)
+
+        // Log today — gap means today starts a new chain of 1, not 4.
+        interactor.toggleDone(habit, on: today, in: context)
+        try context.save()
+        XCTAssertEqual(habit.currentStreak, 1, "gap prevents chaining: today-only streak")
+        XCTAssertEqual(habit.longestStreak, 1)
+    }
+
+    @MainActor
+    func test_habit_streakMilestoneCreditsGold() throws {
+        let container = try ModelContainer(
+            for: DBModel.Habit.self, DBModel.HabitLogEntry.self,
+                DBModel.FarmState.self, DBModel.FarmPlot.self, DBModel.Goal.self,
+                DBModel.Task.self, DBModel.HabitLogEntry.self, DBModel.Quest.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let economy = RealEconomyInteractor()
+        let farm = RealFarmInteractor(economy: economy)
+        farm.bootstrap(in: context)
+        let startingGold = economy.balance(in: context)
+
+        let interactor = RealHabitsInteractor(
+            scheduler: StubNotificationScheduler(),
+            economy: economy,
+            farm: StubFarmInteractor()
+        )
+        interactor.add(HabitDraft(title: "Meditate"), in: context)
+        try context.save()
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+
+        // Simulate 7 consecutive days ending today.
+        let cal = Calendar.current
+        for daysAgo in stride(from: 6, through: 0, by: -1) {
+            let day = cal.date(byAdding: .day, value: -daysAgo, to: Date())!
+            interactor.toggleDone(habit, on: day, in: context)
+        }
+        try context.save()
+
+        XCTAssertEqual(habit.currentStreak, 7)
+        XCTAssertEqual(habit.lastStreakMilestone, 7)
+        XCTAssertEqual(
+            economy.balance(in: context),
+            startingGold + StreakTuning.bonus(at: 7),
+            "7-day milestone credited"
+        )
+    }
+
+    @MainActor
+    func test_habit_streakMilestoneNotAwardedTwice() throws {
+        let container = try ModelContainer(
+            for: DBModel.Habit.self, DBModel.HabitLogEntry.self,
+                DBModel.FarmState.self, DBModel.FarmPlot.self, DBModel.Goal.self,
+                DBModel.Task.self, DBModel.Quest.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let economy = RealEconomyInteractor()
+        let farm = RealFarmInteractor(economy: economy)
+        farm.bootstrap(in: context)
+
+        let interactor = RealHabitsInteractor(
+            scheduler: StubNotificationScheduler(),
+            economy: economy,
+            farm: StubFarmInteractor()
+        )
+        interactor.add(HabitDraft(title: "Walk"), in: context)
+        try context.save()
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+
+        let cal = Calendar.current
+        // Build 7-day streak ending yesterday.
+        for daysAgo in stride(from: 7, through: 1, by: -1) {
+            let day = cal.date(byAdding: .day, value: -daysAgo, to: Date())!
+            interactor.toggleDone(habit, on: day, in: context)
+        }
+        try context.save()
+        let goldAfterFirstMilestone = economy.balance(in: context)
+
+        // Toggle today: streak becomes 8, no new milestone until 14.
+        interactor.toggleDone(habit, on: Date(), in: context)
+        try context.save()
+
+        XCTAssertEqual(habit.currentStreak, 8)
+        XCTAssertEqual(habit.lastStreakMilestone, 7, "milestone stays at 7 until 14-day")
+        XCTAssertEqual(economy.balance(in: context), goldAfterFirstMilestone, "no double award")
+    }
+
+    // MARK: - harvestMature quest
+
+    @MainActor
+    func test_quests_harvestMatureRolledAndAutoClaims() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let farm = RealFarmInteractor(economy: economy)
+        let goals = RealGoalsInteractor(farm: farm)
+        let quests = RealQuestInteractor(economy: economy, rng: { 0 })
+        let habits = RealHabitsInteractor(
+            scheduler: StubNotificationScheduler(), economy: economy,
+            farm: farm, quests: quests)
+        farm.bootstrap(in: context)
+
+        // Two mature goal plots satisfy the threshold.
+        goals.add(GoalDraft(title: "Run",  farmElementType: .crop), in: context)
+        goals.add(GoalDraft(title: "Read", farmElementType: .crop), in: context)
+        try context.save()
+        for goal in try context.fetch(FetchDescriptor<DBModel.Goal>()) {
+            goal.plot?.health = FarmTuning.matureThreshold + 10
+            goal.plot?.state = .mature
+        }
+        try context.save()
+
+        // rollDaily should include a harvestMature slot.
+        let rolled = quests.rollDaily(on: Date(), in: context)
+        let harvestQuest = try XCTUnwrap(
+            rolled.first { $0.kind == .harvestMature },
+            "harvestMature quest should be rolled when ≥2 living goal plots exist"
+        )
+        XCTAssertEqual(harvestQuest.state, .active)
+
+        // Logging any habit triggers checkFarmQuests which should auto-claim.
+        habits.add(HabitDraft(title: "Stretch"), in: context)
+        try context.save()
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+        let goldBefore = economy.balance(in: context)
+
+        habits.toggleDone(habit, on: Date(), in: context)
+        try context.save()
+
+        XCTAssertEqual(harvestQuest.state, .completed, "harvestMature auto-claimed after checkFarmQuests")
+        XCTAssertEqual(economy.balance(in: context), goldBefore + harvestQuest.goldReward)
+    }
+
+    // MARK: - archiveAndDelete (existing test, just moved after new tests)
 
     @MainActor
     func test_habitsInteractor_archiveAndDelete() throws {

@@ -125,6 +125,8 @@ private struct QuestRow: View {
             return "🔄 Log: \(habitTitle ?? "(missing habit)")"
         case .commonFieldTend:
             return "🌼 Tend the common field"
+        case .harvestMature:
+            return "🌾 Grow \(QuestTuning.harvestMatureThreshold)+ mature plots"
         }
     }
 

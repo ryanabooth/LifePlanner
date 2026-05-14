@@ -6,11 +6,17 @@ protocol NotificationScheduler: Sendable {
     func cancelHabitReminder(habitID: UUID) async
     func scheduleTaskDue(taskID: UUID, title: String, at fireDate: Date) async
     func cancelTaskDue(taskID: UUID) async
+    /// Schedule (or replace) a next-morning alert for a plot state change.
+    func schedulePlotAlert(plotID: UUID, title: String, body: String, fireAt: Date) async
+    func cancelPlotAlert(plotID: UUID) async
+    /// Fire a one-shot streak-milestone celebration immediately.
+    func scheduleStreakMilestone(habitTitle: String, streak: Int, bonus: Int) async
 }
 
 extension NotificationScheduler {
     func habitReminderID(_ habitID: UUID) -> String { "habit-reminder-\(habitID.uuidString)" }
     func taskDueID(_ taskID: UUID) -> String { "task-due-\(taskID.uuidString)" }
+    func plotAlertID(_ plotID: UUID) -> String { "plot-alert-\(plotID.uuidString)" }
 }
 
 final class RealNotificationScheduler: NotificationScheduler {
@@ -80,6 +86,46 @@ final class RealNotificationScheduler: NotificationScheduler {
         center.removePendingNotificationRequests(withIdentifiers: [taskDueID(taskID)])
     }
 
+    func schedulePlotAlert(plotID: UUID, title: String, body: String, fireAt: Date) async {
+        guard await ensureAuthorized() else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        content.categoryIdentifier = "plot-alert"
+
+        let comps = Calendar.current.dateComponents(
+            [.year, .month, .day, .hour, .minute], from: fireAt)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: plotAlertID(plotID), content: content, trigger: trigger)
+
+        center.removePendingNotificationRequests(withIdentifiers: [plotAlertID(plotID)])
+        try? await center.add(request)
+    }
+
+    func cancelPlotAlert(plotID: UUID) async {
+        center.removePendingNotificationRequests(withIdentifiers: [plotAlertID(plotID)])
+        center.removeDeliveredNotifications(withIdentifiers: [plotAlertID(plotID)])
+    }
+
+    func scheduleStreakMilestone(habitTitle: String, streak: Int, bonus: Int) async {
+        guard await ensureAuthorized() else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = "🔥 \(streak)-day streak!"
+        content.body = "\(habitTitle): \(streak) days in a row — you earned 🪙 \(bonus) gold."
+        content.sound = .default
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: "streak-milestone-\(UUID().uuidString)",
+            content: content,
+            trigger: trigger)
+        try? await center.add(request)
+    }
+
     private func ensureAuthorized() async -> Bool {
         let settings = await center.notificationSettings()
         switch settings.authorizationStatus {
@@ -100,4 +146,7 @@ final class StubNotificationScheduler: NotificationScheduler {
     func cancelHabitReminder(habitID: UUID) async {}
     func scheduleTaskDue(taskID: UUID, title: String, at fireDate: Date) async {}
     func cancelTaskDue(taskID: UUID) async {}
+    func schedulePlotAlert(plotID: UUID, title: String, body: String, fireAt: Date) async {}
+    func cancelPlotAlert(plotID: UUID) async {}
+    func scheduleStreakMilestone(habitTitle: String, streak: Int, bonus: Int) async {}
 }

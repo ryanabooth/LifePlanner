@@ -73,10 +73,11 @@ Expand gold sinks beyond capacity.
 
 ## Phase 4 — Depth & retention
 
-- [ ] **Streaks → seasonal events.** Consecutive-day habit streaks unlock limited-time decorations.
-- [ ] **Quest variety.** Multi-step quests, weekly quests, themed chains (e.g., "harvest 5 mature crops this week").
+- [x] **Streaks.** `currentStreak` / `longestStreak` / `lastStreakMilestone` on `DBModel.Habit` (schema v0.7.0). Recomputed in `HabitsInteractor.toggleDone` as the consecutive chain ending at the toggled day. Milestone gold bonuses at 7 / 14 / 30 / 60 / 100 days (`StreakTuning`); each milestone credited once and announced via an immediate local notification. `🔥 N` streak badge shows in `HabitsTabView` when ≥ 2.
+- [x] **New quest kind: `harvestMature`.** "Grow 2+ mature plots simultaneously" (🌾). Rolled when ≥2 living goal plots exist; auto-claimed by `QuestInteractor.checkFarmQuests`, which is called from both `HabitsInteractor.toggleDone` and `TasksInteractor.toggleDone` after any farm contribution. Reward: 🪙 15.
+- [x] **Farm-health notifications.** `NotificationScheduler` gains `schedulePlotAlert` (next-morning calendar trigger) and `cancelPlotAlert`. `FarmInteractor.decay` fires a wither alert on the `.growing → .withered` transition and a death alert on `.withered → .dead`; `replant` cancels the pending alert. Streak milestone fires a one-shot immediate notification on each milestone hit.
+- [ ] **Quest variety (further).** Multi-step quests, weekly quests, themed chains (e.g., "harvest 5 mature crops this week").
 - [ ] **Difficulty / reward tuning.** Telemetry-driven adjustments to gold rewards, decay rate, capacity costs.
-- [ ] **Notifications.** Re-introduce task-due notifications (carry-over from old roadmap) plus farm-health alerts ("Your Crop is wilting").
 
 ## Phase 5 — Platform
 

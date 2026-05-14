@@ -66,6 +66,7 @@ final class RealTasksInteractor: TasksInteractor {
             cancelReminder(id: task.id)
             farm.applyTaskCompletion(task, in: context)
             quests.notifyCompletion(referenceID: task.id, in: context)
+            quests.checkFarmQuests(in: context)
         } else {
             syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: false)
         }
