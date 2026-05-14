@@ -71,6 +71,7 @@ final class RealTasksInteractor: TasksInteractor {
             cancelReminder(id: task.id)
             let matured = farm.applyTaskCompletion(task, in: context)
             quests.notifyCompletion(referenceID: task.id, in: context)
+            if task.goals?.isEmpty != false { quests.notifyCommonFieldTend(in: context) }
             quests.checkFarmQuests(in: context)
             quests.trackMatureTransitions(count: matured, in: context)
             let id = task.id
