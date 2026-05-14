@@ -1119,4 +1119,123 @@ final class LifePlannerTests: XCTestCase {
         try context.save()
         XCTAssertTrue(try context.fetch(FetchDescriptor<DBModel.Habit>()).isEmpty)
     }
+
+    // MARK: - Recurring tasks
+
+    func test_recurrence_nextDate_daily() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC")!
+        let monday = cal.date(from: DateComponents(year: 2025, month: 1, day: 6))! // Monday
+        let next = TaskRecurrence.daily.nextDate(after: monday, calendar: cal)
+        let comps = cal.dateComponents([.year, .month, .day, .weekday], from: next)
+        XCTAssertEqual(comps.day, 7)    // Tuesday
+        XCTAssertEqual(comps.weekday, 3)
+    }
+
+    func test_recurrence_nextDate_weekdays_skipsWeekend() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC")!
+        let friday = cal.date(from: DateComponents(year: 2025, month: 1, day: 10))! // Friday
+        let next = TaskRecurrence.weekdays.nextDate(after: friday, calendar: cal)
+        let comps = cal.dateComponents([.weekday], from: next)
+        XCTAssertEqual(comps.weekday, 2) // Monday (skipped Sat+Sun)
+    }
+
+    func test_recurrence_nextDate_weekdays_fromWednesday() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC")!
+        let wednesday = cal.date(from: DateComponents(year: 2025, month: 1, day: 8))!
+        let next = TaskRecurrence.weekdays.nextDate(after: wednesday, calendar: cal)
+        let comps = cal.dateComponents([.weekday], from: next)
+        XCTAssertEqual(comps.weekday, 5) // Thursday
+    }
+
+    func test_recurrence_nextDate_weekly() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC")!
+        let date = cal.date(from: DateComponents(year: 2025, month: 1, day: 6))!
+        let next = TaskRecurrence.weekly.nextDate(after: date, calendar: cal)
+        let comps = cal.dateComponents([.year, .month, .day], from: next)
+        XCTAssertEqual(comps.day, 13)
+        XCTAssertEqual(comps.month, 1)
+    }
+
+    func test_recurrence_nextDate_monthly() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC")!
+        let date = cal.date(from: DateComponents(year: 2025, month: 1, day: 31))!
+        let next = TaskRecurrence.monthly.nextDate(after: date, calendar: cal)
+        let comps = cal.dateComponents([.month], from: next)
+        XCTAssertEqual(comps.month, 2) // Feb — Calendar clips to Feb 28
+    }
+
+    @MainActor
+    func test_recurringTask_toggleDone_spawnsNextOccurrence() throws {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC")!
+        let context = try makeFarmContext()
+        let interactor = RealTasksInteractor(calendar: cal)
+
+        let due = cal.date(from: DateComponents(year: 2025, month: 3, day: 10))!
+        interactor.add(
+            TaskDraft(title: "Water plants", dueDate: due, recurrence: .daily),
+            in: context
+        )
+
+        let task = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Task>()).first)
+        interactor.toggleDone(task, in: context)
+
+        let all = try context.fetch(FetchDescriptor<DBModel.Task>())
+        XCTAssertEqual(all.count, 2)
+
+        let original = try XCTUnwrap(all.first { $0.isDone })
+        let spawned  = try XCTUnwrap(all.first { !$0.isDone })
+
+        XCTAssertEqual(original.title, "Water plants")
+        XCTAssertEqual(spawned.title, "Water plants")
+        XCTAssertEqual(spawned.recurrence, .daily)
+
+        let spawnedComps = cal.dateComponents([.year, .month, .day], from: spawned.dueDate!)
+        XCTAssertEqual(spawnedComps.year,  2025)
+        XCTAssertEqual(spawnedComps.month, 3)
+        XCTAssertEqual(spawnedComps.day,   11)
+    }
+
+    @MainActor
+    func test_recurringTask_weekly_correctNextDate() throws {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "UTC")!
+        let context = try makeFarmContext()
+        let interactor = RealTasksInteractor(calendar: cal)
+
+        let due = cal.date(from: DateComponents(year: 2025, month: 4, day: 1))! // Tuesday
+        interactor.add(
+            TaskDraft(title: "Weekly review", dueDate: due, recurrence: .weekly),
+            in: context
+        )
+
+        let task = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Task>()).first)
+        interactor.toggleDone(task, in: context)
+
+        let spawned = try XCTUnwrap(
+            try context.fetch(FetchDescriptor<DBModel.Task>()).first { !$0.isDone }
+        )
+        let comps = cal.dateComponents([.year, .month, .day], from: spawned.dueDate!)
+        XCTAssertEqual(comps.day, 8)   // April 8
+        XCTAssertEqual(comps.month, 4)
+    }
+
+    @MainActor
+    func test_nonRecurringTask_toggleDone_noSpawn() throws {
+        let context = try makeFarmContext()
+        let interactor = RealTasksInteractor()
+
+        interactor.add(TaskDraft(title: "One-off task"), in: context)
+        let task = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Task>()).first)
+        interactor.toggleDone(task, in: context)
+
+        let all = try context.fetch(FetchDescriptor<DBModel.Task>())
+        XCTAssertEqual(all.count, 1)
+        XCTAssertTrue(all[0].isDone)
+    }
 }

@@ -24,7 +24,8 @@ struct AddTaskSheet: View {
                 notes: existing.notes,
                 dueDate: existing.dueDate,
                 priority: existing.priority,
-                tags: existing.tags
+                tags: existing.tags,
+                recurrence: existing.recurrence
             ))
             _includeDueDate = State(initialValue: existing.dueDate != nil)
             isEditing = true
@@ -58,11 +59,21 @@ struct AddTaskSheet: View {
                             ),
                             displayedComponents: [.date, .hourAndMinute]
                         )
+                        Picker("Repeat", selection: $draft.recurrence) {
+                            Text("Never").tag(TaskRecurrence?.none)
+                            ForEach(TaskRecurrence.allCases) { r in
+                                Text(r.label).tag(TaskRecurrence?.some(r))
+                            }
+                        }
                     }
                 }
                 .onChange(of: includeDueDate) { _, on in
-                    if !on { draft.dueDate = nil }
-                    else if draft.dueDate == nil { draft.dueDate = Self.defaultDueDate }
+                    if !on {
+                        draft.dueDate = nil
+                        draft.recurrence = nil
+                    } else if draft.dueDate == nil {
+                        draft.dueDate = Self.defaultDueDate
+                    }
                 }
                 Section("Priority") {
                     Picker("Priority", selection: $draft.priority) {
