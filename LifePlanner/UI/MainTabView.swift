@@ -5,6 +5,7 @@ enum MainTab: Hashable {
     case tasks
     case habits
     case goals
+    case settings
 }
 
 struct MainTabView: View {
@@ -29,6 +30,10 @@ struct MainTabView: View {
             GoalsTabView()
                 .tabItem { Label("Goals", systemImage: "target") }
                 .tag(MainTab.goals)
+
+            SettingsView()
+                .tabItem { Label("Settings", systemImage: "gearshape") }
+                .tag(MainTab.settings)
         }
     }
 }

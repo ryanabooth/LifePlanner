@@ -28,6 +28,7 @@ final class RealNotificationScheduler: NotificationScheduler {
     }
 
     func scheduleHabitReminder(habitID: UUID, title: String, time: Date) async {
+        guard UserDefaults.standard.object(forKey: "notif.habitReminders") as? Bool ?? true else { return }
         guard await ensureAuthorized() else { return }
 
         let content = UNMutableNotificationContent()
@@ -58,6 +59,7 @@ final class RealNotificationScheduler: NotificationScheduler {
 
     func scheduleTaskDue(taskID: UUID, title: String, at fireDate: Date) async {
         guard fireDate > Date() else { return }
+        guard UserDefaults.standard.object(forKey: "notif.taskDue") as? Bool ?? true else { return }
         guard await ensureAuthorized() else { return }
 
         let content = UNMutableNotificationContent()
@@ -87,6 +89,7 @@ final class RealNotificationScheduler: NotificationScheduler {
     }
 
     func schedulePlotAlert(plotID: UUID, title: String, body: String, fireAt: Date) async {
+        guard UserDefaults.standard.object(forKey: "notif.plotAlerts") as? Bool ?? true else { return }
         guard await ensureAuthorized() else { return }
 
         let content = UNMutableNotificationContent()
@@ -111,6 +114,7 @@ final class RealNotificationScheduler: NotificationScheduler {
     }
 
     func scheduleStreakMilestone(habitTitle: String, streak: Int, bonus: Int) async {
+        guard UserDefaults.standard.object(forKey: "notif.streakMilestones") as? Bool ?? true else { return }
         guard await ensureAuthorized() else { return }
 
         let content = UNMutableNotificationContent()
