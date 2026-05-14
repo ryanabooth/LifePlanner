@@ -67,6 +67,7 @@ final class RealHabitsInteractor: HabitsInteractor {
         )
         context.insert(habit)
         syncReminder(for: habit)
+        quests.refreshTodaysCommonFieldSlots(in: context)
         context.saveQuietly()
     }
 

@@ -45,6 +45,7 @@ final class RealTasksInteractor: TasksInteractor {
         context.insert(task)
         syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: task.isDone)
         Swift.Task.detached { await SpotlightIndexer.shared.index(task: task) }
+        quests.refreshTodaysCommonFieldSlots(in: context)
         context.saveQuietly()
     }
 

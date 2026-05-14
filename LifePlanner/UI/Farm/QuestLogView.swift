@@ -131,6 +131,9 @@ private struct QuestRow: View {
                     } label: {
                         Label("Re-roll (\(QuestTuning.rerollCost(for: quest.rerollCount)))", systemImage: "dice")
                             .font(.caption)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
