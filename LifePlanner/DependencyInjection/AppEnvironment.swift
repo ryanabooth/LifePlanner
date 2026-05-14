@@ -58,6 +58,7 @@ extension AppEnvironment {
         let tasks = RealTasksInteractor(farm: farm, quests: quests)
         let habits = RealHabitsInteractor(farm: farm, quests: quests)
         let goals = RealGoalsInteractor(farm: farm)
+        let cosmetics = RealCosmeticInteractor(economy: economy)
         return .init(
             userPermissions: userPermissions,
             tasks: tasks,
@@ -65,7 +66,8 @@ extension AppEnvironment {
             goals: goals,
             economy: economy,
             farm: farm,
-            quests: quests
+            quests: quests,
+            cosmetics: cosmetics
         )
     }
 }

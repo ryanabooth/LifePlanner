@@ -3,7 +3,7 @@ import SwiftData
 enum DBModel { }
 
 extension Schema {
-    private static var actualVersion: Schema.Version = Version(0, 5, 0)
+    private static var actualVersion: Schema.Version = Version(0, 6, 0)
 
     static var appSchema: Schema {
         Schema([
@@ -13,7 +13,8 @@ extension Schema {
             DBModel.Goal.self,
             DBModel.FarmState.self,
             DBModel.FarmPlot.self,
-            DBModel.Quest.self
+            DBModel.Quest.self,
+            DBModel.OwnedCosmetic.self
         ], version: actualVersion)
     }
 }
