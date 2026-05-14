@@ -36,6 +36,8 @@ extension DBModel {
         var why: String? = nil
         var targetDate: Date? = nil
         var status: GoalStatus = GoalStatus.active
+        /// What kind of farm element this goal manifests as. User-picked at create time.
+        var farmElementType: FarmElementType = FarmElementType.crop
         var createdAt: Date = Date()
         var updatedAt: Date = Date()
 
@@ -45,12 +47,19 @@ extension DBModel {
         @Relationship(inverse: \DBModel.Habit.goals)
         var linkedHabits: [DBModel.Habit]? = []
 
+        /// The farm plot allocated for this goal. Cascade-deleted when the goal is removed.
+        /// `nil` until `FarmInteractor.bindPlot(to:)` allocates one.
+        /// Inverse is declared on `FarmPlot.goal`.
+        @Relationship(deleteRule: .cascade)
+        var plot: DBModel.FarmPlot? = nil
+
         init(
             id: UUID = UUID(),
             title: String = "",
             why: String? = nil,
             targetDate: Date? = nil,
             status: GoalStatus = .active,
+            farmElementType: FarmElementType = .crop,
             createdAt: Date = Date(),
             updatedAt: Date = Date()
         ) {
@@ -59,6 +68,7 @@ extension DBModel {
             self.why = why
             self.targetDate = targetDate
             self.status = status
+            self.farmElementType = farmElementType
             self.createdAt = createdAt
             self.updatedAt = updatedAt
         }
