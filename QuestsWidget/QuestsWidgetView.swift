@@ -88,3 +88,16 @@ struct QuestsWidgetView: View {
         .containerBackground(.fill.tertiary, for: .widget)
     }
 }
+
+struct QuestsWidget: Widget {
+    let kind: String = "QuestsWidget"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: QuestProvider()) { entry in
+            QuestsWidgetView(entry: entry)
+        }
+        .configurationDisplayName("Today's Quests")
+        .description("See your daily quests and gold balance.")
+        .supportedFamilies([.systemSmall, .systemMedium])
+    }
+}

@@ -7,11 +7,21 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3171A70F2FB65E8800304319 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3171A70E2FB65E8800304319 /* WidgetKit.framework */; };
+		3171A7112FB65E8800304319 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3171A7102FB65E8800304319 /* SwiftUI.framework */; };
+		3171A71E2FB65E8900304319 /* QuestsWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 3171A70C2FB65E8800304319 /* QuestsWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		4819F10E2CDF5819003CA0AE /* EnvironmentOverrides in Frameworks */ = {isa = PBXBuildFile; productRef = 4819F10D2CDF5819003CA0AE /* EnvironmentOverrides */; };
 		4819F1172CDF6DD4003CA0AE /* ViewInspector in Frameworks */ = {isa = PBXBuildFile; productRef = 4819F1162CDF6DD4003CA0AE /* ViewInspector */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		3171A71C2FB65E8900304319 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4887340F2CDCA2DB00B400A3 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3171A70B2FB65E8800304319;
+			remoteInfo = QuestsWidgetExtension;
+		};
 		4887342A2CDCA2DD00B400A3 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 4887340F2CDCA2DB00B400A3 /* Project object */;
@@ -21,14 +31,68 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		3171A71F2FB65E8900304319 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				3171A71E2FB65E8900304319 /* QuestsWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		3171A70C2FB65E8800304319 /* QuestsWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QuestsWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		3171A70E2FB65E8800304319 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		3171A7102FB65E8800304319 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		3171A72B2FB65F3800304319 /* QuestsWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = QuestsWidgetExtension.entitlements; sourceTree = "<group>"; };
 		488734172CDCA2DB00B400A3 /* LifePlanner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LifePlanner.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		488734292CDCA2DD00B400A3 /* UnitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = UnitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		3171A7222FB65E8900304319 /* Exceptions for "QuestsWidget" folder in "QuestsWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 3171A70B2FB65E8800304319 /* QuestsWidgetExtension */;
+		};
+		3171A86B2FB663F300304319 /* Exceptions for "LifePlanner" folder in "QuestsWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Repositories/Database/ModelContainer.swift,
+				Repositories/Models/AppSchema.swift,
+				Repositories/Models/FarmPlot.swift,
+				Repositories/Models/FarmState.swift,
+				Repositories/Models/Goal.swift,
+				Repositories/Models/Habit.swift,
+				Repositories/Models/OwnedCosmetic.swift,
+				Repositories/Models/Quest.swift,
+				Repositories/Models/Task.swift,
+			);
+			target = 3171A70B2FB65E8800304319 /* QuestsWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		3171A7122FB65E8800304319 /* QuestsWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				3171A7222FB65E8900304319 /* Exceptions for "QuestsWidget" folder in "QuestsWidgetExtension" target */,
+			);
+			path = QuestsWidget;
+			sourceTree = "<group>";
+		};
 		488734192CDCA2DB00B400A3 /* LifePlanner */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				3171A86B2FB663F300304319 /* Exceptions for "LifePlanner" folder in "QuestsWidgetExtension" target */,
+			);
 			path = LifePlanner;
 			sourceTree = "<group>";
 		};
@@ -40,6 +104,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		3171A7092FB65E8800304319 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3171A7112FB65E8800304319 /* SwiftUI.framework in Frameworks */,
+				3171A70F2FB65E8800304319 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		488734142CDCA2DB00B400A3 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -59,11 +132,23 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		3171A70D2FB65E8800304319 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				3171A70E2FB65E8800304319 /* WidgetKit.framework */,
+				3171A7102FB65E8800304319 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		4887340E2CDCA2DB00B400A3 = {
 			isa = PBXGroup;
 			children = (
+				3171A72B2FB65F3800304319 /* QuestsWidgetExtension.entitlements */,
 				488734192CDCA2DB00B400A3 /* LifePlanner */,
 				4887342C2CDCA2DD00B400A3 /* UnitTests */,
+				3171A7122FB65E8800304319 /* QuestsWidget */,
+				3171A70D2FB65E8800304319 /* Frameworks */,
 				488734182CDCA2DB00B400A3 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -73,6 +158,7 @@
 			children = (
 				488734172CDCA2DB00B400A3 /* LifePlanner.app */,
 				488734292CDCA2DD00B400A3 /* UnitTests.xctest */,
+				3171A70C2FB65E8800304319 /* QuestsWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -80,6 +166,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		3171A70B2FB65E8800304319 /* QuestsWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3171A7232FB65E8900304319 /* Build configuration list for PBXNativeTarget "QuestsWidgetExtension" */;
+			buildPhases = (
+				3171A7082FB65E8800304319 /* Sources */,
+				3171A7092FB65E8800304319 /* Frameworks */,
+				3171A70A2FB65E8800304319 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				3171A7122FB65E8800304319 /* QuestsWidget */,
+			);
+			name = QuestsWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = QuestsWidgetExtension;
+			productReference = 3171A70C2FB65E8800304319 /* QuestsWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		488734162CDCA2DB00B400A3 /* LifePlanner */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 4887343D2CDCA2DD00B400A3 /* Build configuration list for PBXNativeTarget "LifePlanner" */;
@@ -87,10 +195,12 @@
 				488734132CDCA2DB00B400A3 /* Sources */,
 				488734142CDCA2DB00B400A3 /* Frameworks */,
 				488734152CDCA2DB00B400A3 /* Resources */,
+				3171A71F2FB65E8900304319 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				3171A71D2FB65E8900304319 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				488734192CDCA2DB00B400A3 /* LifePlanner */,
@@ -134,10 +244,13 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1610;
-				LastUpgradeCheck = 1610;
+				LastSwiftUpdateCheck = 2650;
+				LastUpgradeCheck = 2650;
 				ORGANIZATIONNAME = "Alexey Naumov";
 				TargetAttributes = {
+					3171A70B2FB65E8800304319 = {
+						CreatedOnToolsVersion = 26.5;
+					};
 					488734162CDCA2DB00B400A3 = {
 						CreatedOnToolsVersion = 16.1;
 					};
@@ -169,11 +282,19 @@
 			targets = (
 				488734162CDCA2DB00B400A3 /* LifePlanner */,
 				488734282CDCA2DD00B400A3 /* UnitTests */,
+				3171A70B2FB65E8800304319 /* QuestsWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		3171A70A2FB65E8800304319 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		488734152CDCA2DB00B400A3 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -191,6 +312,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		3171A7082FB65E8800304319 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		488734132CDCA2DB00B400A3 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -208,6 +336,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		3171A71D2FB65E8900304319 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3171A70B2FB65E8800304319 /* QuestsWidgetExtension */;
+			targetProxy = 3171A71C2FB65E8900304319 /* PBXContainerItemProxy */;
+		};
 		4887342B2CDCA2DD00B400A3 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 488734162CDCA2DB00B400A3 /* LifePlanner */;
@@ -216,11 +349,74 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		3171A7202FB65E8900304319 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = QuestsWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = QuestsWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = QuestsWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Alexey Naumov. All rights reserved.";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rbooth.lifeplanner.QuestsWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		3171A7212FB65E8900304319 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = QuestsWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = QuestsWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = QuestsWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright © 2026 Alexey Naumov. All rights reserved.";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.rbooth.lifeplanner.QuestsWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		4887343B2CDCA2DD00B400A3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -251,6 +447,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = RXT87P3NH5;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -274,6 +471,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -285,6 +483,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -315,6 +514,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = RXT87P3NH5;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -331,6 +531,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				VALIDATE_PRODUCT = YES;
@@ -342,8 +543,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = LifePlanner/LifePlanner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = RXT87P3NH5;
 				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_ASSET_PATHS = "\"LifePlanner/Resources/Preview Assets.xcassets\"";
 				ENABLE_PREVIEWS = YES;
@@ -362,7 +563,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.rbooth.lifeplanner;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				REGISTER_APP_GROUPS = NO;
+				REGISTER_APP_GROUPS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -378,8 +579,8 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = LifePlanner/LifePlanner.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = RXT87P3NH5;
 				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_ASSET_PATHS = "\"LifePlanner/Resources/Preview Assets.xcassets\"";
 				ENABLE_PREVIEWS = YES;
@@ -398,7 +599,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.rbooth.lifeplanner;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				REGISTER_APP_GROUPS = NO;
+				REGISTER_APP_GROUPS = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -414,7 +615,6 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = RXT87P3NH5;
 				CURRENT_PROJECT_VERSION = 9;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.1;
@@ -433,7 +633,6 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = RXT87P3NH5;
 				CURRENT_PROJECT_VERSION = 9;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.1;
@@ -450,6 +649,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		3171A7232FB65E8900304319 /* Build configuration list for PBXNativeTarget "QuestsWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3171A7202FB65E8900304319 /* Debug */,
+				3171A7212FB65E8900304319 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		488734122CDCA2DB00B400A3 /* Build configuration list for PBXProject "LifePlanner" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
