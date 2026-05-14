@@ -25,17 +25,23 @@ struct AddGoalSheet: View {
                 why: existing.why,
                 targetDate: existing.targetDate,
                 status: existing.status,
-                farmElementType: existing.farmElementType
+                farmElementType: existing.farmElementType,
+                metricUnit: existing.metricUnit,
+                metricTarget: existing.metricTarget
             ))
             _includeTargetDate = State(initialValue: existing.targetDate != nil)
+            _includeMetric = State(initialValue: existing.hasMetric)
             isEditing = true
         } else {
             _draft = State(initialValue: GoalDraft())
             _includeTargetDate = State(initialValue: false)
+            _includeMetric = State(initialValue: false)
             isEditing = false
         }
         self.onSave = onSave
     }
+
+    @State private var includeMetric: Bool = false
 
     // MARK: - Capacity check
 
@@ -76,6 +82,36 @@ struct AddGoalSheet: View {
                     if !on { draft.targetDate = nil }
                     else if draft.targetDate == nil { draft.targetDate = Date() }
                 }
+                Section {
+                    Toggle("Track a metric", isOn: $includeMetric)
+                    if includeMetric {
+                        TextField("Unit (e.g. miles, pages)", text: Binding(
+                            get: { draft.metricUnit ?? "" },
+                            set: { draft.metricUnit = $0 }
+                        ))
+                        .textInputAutocapitalization(.never)
+                        HStack {
+                            Text("Target")
+                            Spacer()
+                            TextField("0", value: $draft.metricTarget, format: .number)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(maxWidth: 100)
+                        }
+                    }
+                } footer: {
+                    if includeMetric {
+                        Text("Set a numeric goal (e.g. \"26.2 miles\"). Leave the target at 0 for an open-ended metric.")
+                            .font(.footnote)
+                    }
+                }
+                .onChange(of: includeMetric) { _, on in
+                    if !on {
+                        draft.metricUnit = nil
+                        draft.metricTarget = 0
+                    }
+                }
+
                 Section("Status") {
                     Picker("Status", selection: $draft.status) {
                         ForEach(GoalStatus.allCases) { Text($0.label).tag($0) }

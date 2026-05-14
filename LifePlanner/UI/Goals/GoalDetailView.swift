@@ -21,6 +21,9 @@ struct GoalDetailView: View {
     @State private var showingEdit = false
     @State private var showingTaskPicker = false
     @State private var showingHabitPicker = false
+    @State private var newSubGoalTitle = ""
+    @State private var showLogMetric = false
+    @State private var logAmount: Double = 1
 
     var body: some View {
         Form {
@@ -44,6 +47,12 @@ struct GoalDetailView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+
+            if goal.hasMetric {
+                metricSection
+            }
+
+            subGoalsSection
 
             Section {
                 let linked = goal.linkedTasks ?? []
@@ -136,6 +145,156 @@ struct GoalDetailView: View {
                     habits: habits,
                     in: modelContext
                 )
+            }
+        }
+        .sheet(isPresented: $showLogMetric) {
+            LogMetricSheet(
+                goal: goal,
+                amount: $logAmount,
+                onLog: { amount in
+                    injected.interactors.goals.logMetricProgress(goal, amount: amount, in: modelContext)
+                }
+            )
+            .presentationDetents([.medium])
+        }
+    }
+
+    // MARK: - Sections
+
+    private var subGoalsSection: some View {
+        let subs = (goal.subGoals ?? []).sorted { $0.order < $1.order }
+        let doneCount = subs.filter(\.isDone).count
+        return Section {
+            if subs.isEmpty {
+                Text("No sub-goals yet.")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(subs) { sub in
+                    HStack {
+                        Button {
+                            injected.interactors.goals.toggleSubGoal(sub, in: modelContext)
+                        } label: {
+                            Image(systemName: sub.isDone ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(sub.isDone ? .green : .secondary)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.borderless)
+                        Text(sub.title)
+                            .strikethrough(sub.isDone)
+                            .foregroundStyle(sub.isDone ? .secondary : .primary)
+                    }
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            injected.interactors.goals.deleteSubGoal(sub, in: modelContext)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                }
+            }
+            HStack {
+                TextField("Add a sub-goal", text: $newSubGoalTitle)
+                    .submitLabel(.done)
+                    .onSubmit(commitSubGoal)
+                Button(action: commitSubGoal) {
+                    Image(systemName: "plus.circle.fill")
+                        .foregroundStyle(.tint)
+                }
+                .buttonStyle(.borderless)
+                .disabled(newSubGoalTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        } header: {
+            HStack {
+                Text("Sub-goals")
+                if !subs.isEmpty {
+                    Spacer()
+                    Text("\(doneCount) / \(subs.count)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private var metricSection: some View {
+        Section {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(formattedValue(goal.metricValue))
+                        .font(.title2.bold())
+                    Text(goal.metricUnit ?? "")
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    if goal.metricTarget > 0 {
+                        Text("of \(formattedValue(goal.metricTarget))")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if goal.metricTarget > 0 {
+                    ProgressView(value: goal.metricProgress)
+                        .tint(.green)
+                }
+            }
+            Button {
+                showLogMetric = true
+            } label: {
+                Label("Log progress", systemImage: "plus.circle")
+            }
+        } header: {
+            Text("Progress")
+        }
+    }
+
+    private func commitSubGoal() {
+        let trimmed = newSubGoalTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        injected.interactors.goals.addSubGoal(trimmed, to: goal, in: modelContext)
+        newSubGoalTitle = ""
+    }
+
+    private func formattedValue(_ v: Double) -> String {
+        if v.truncatingRemainder(dividingBy: 1) == 0 {
+            return String(Int(v))
+        }
+        return String(format: "%.1f", v)
+    }
+}
+
+private struct LogMetricSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let goal: DBModel.Goal
+    @Binding var amount: Double
+    let onLog: (Double) -> Void
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack {
+                        TextField("Amount", value: $amount, format: .number)
+                            .keyboardType(.decimalPad)
+                        Text(goal.metricUnit ?? "")
+                            .foregroundStyle(.secondary)
+                    }
+                } footer: {
+                    Text("Adds to \(goal.title) and pumps health into the plot.")
+                        .font(.footnote)
+                }
+            }
+            .navigationTitle("Log progress")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Log") {
+                        onLog(amount)
+                        dismiss()
+                    }
+                    .disabled(amount <= 0)
+                }
             }
         }
     }

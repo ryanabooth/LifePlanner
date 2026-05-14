@@ -91,7 +91,7 @@ Expand gold sinks beyond capacity.
 Items that were punted during the pivot to keep v0.5.0 focused.
 
 - [x] **Habit weekly cadence + target counts.** `HabitFrequency.weekly` with `weeklyTarget: Int` on `DBModel.Habit` (schema v0.9.0). `isWeekComplete(containing:)` helper used by quest pool (weekly habits drop out of daily quests once the target is met). Weekly streak = consecutive completed ISO weeks ending at *the current week*, with a mid-week grace pass so backfills don't reset progress. `AddHabitSheet` has a stepper for 1–7×/week; `HabitsTabView` row shows "Weekly · 2/3" badge.
-- [ ] **Goal sub-goals & metric tracking.** Currently a goal is a single string + status. Future: a goal can have ordered sub-goals (mini-quests that aggregate into the parent), and optional numeric metrics (e.g., miles run, books read) that drive richer farm-plot growth signals.
+- [x] **Goal sub-goals & metric tracking.** New `DBModel.SubGoal` model with cascade-delete on the parent (`subGoals` relationship + `order` field for stable display). Checking a sub-goal pumps `taskBaseContribution` health into the parent's plot. New optional metric fields on `DBModel.Goal`: `metricUnit`, `metricTarget`, `metricValue` (schema v0.10.0). `GoalsInteractor.logMetricProgress` adds to the value and contributes habit-magnitude health to the plot. `GoalDetailView` gets a "Sub-goals" section with inline add + swipe delete, and a "Progress" section showing value/target with a ProgressView and a log sheet.
 
 ## Deferred / explicitly out of scope for v0.5.0
 
