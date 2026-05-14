@@ -9,6 +9,9 @@ import Combine
 /// presentations on top of the scene.
 struct FarmTabView: View {
 
+    @Environment(\.injected) private var injected: DIContainer
+    @Environment(\.modelContext) private var modelContext
+
     @Query private var plots: [DBModel.FarmPlot]
     @Query private var farmStates: [DBModel.FarmState]
     @Query private var ownedCosmetics: [DBModel.OwnedCosmetic]
@@ -26,6 +29,10 @@ struct FarmTabView: View {
     @State private var showQuestLog = false
     @State private var showCapacityUpgrade = false
     @State private var showCosmeticShop = false
+    @State private var showAddMenu = false
+    @State private var showAddTask = false
+    @State private var showAddHabit = false
+    @State private var showAddGoal = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -50,6 +57,11 @@ struct FarmTabView: View {
                     .padding(.trailing, 16)
                     .padding(.top, proxy.safeAreaInsets.top + 48)
             }
+            .overlay(alignment: .bottomTrailing) {
+                addFAB
+                    .padding(.trailing, 20)
+                    .padding(.bottom, proxy.safeAreaInsets.bottom + 20)
+            }
         }
         .sheet(item: $presentedPlot) { item in
             PlotDetailSheet(plotID: item.id)
@@ -62,6 +74,21 @@ struct FarmTabView: View {
         }
         .sheet(isPresented: $showCosmeticShop) {
             CosmeticShopView()
+        }
+        .sheet(isPresented: $showAddTask) {
+            AddTaskSheet { draft in
+                injected.interactors.tasks.add(draft, in: modelContext)
+            }
+        }
+        .sheet(isPresented: $showAddHabit) {
+            AddHabitSheet { draft in
+                injected.interactors.habits.add(draft, in: modelContext)
+            }
+        }
+        .sheet(isPresented: $showAddGoal) {
+            AddGoalSheet { draft in
+                injected.interactors.goals.add(draft, in: modelContext)
+            }
         }
     }
 
@@ -98,6 +125,58 @@ struct FarmTabView: View {
             .accessibilityLabel("Cosmetic Shop")
         }
         .foregroundStyle(.primary)
+    }
+
+    private var addFAB: some View {
+        VStack(alignment: .trailing, spacing: 12) {
+            if showAddMenu {
+                fabSubButton(label: "New Goal", icon: "target") {
+                    showAddGoal = true
+                }
+                fabSubButton(label: "New Habit", icon: "arrow.trianglehead.2.clockwise") {
+                    showAddHabit = true
+                }
+                fabSubButton(label: "New Task", icon: "checkmark.circle") {
+                    showAddTask = true
+                }
+            }
+
+            Button {
+                withAnimation(.spring(duration: 0.25)) {
+                    showAddMenu.toggle()
+                }
+            } label: {
+                Image(systemName: "plus")
+                    .font(.title2.bold())
+                    .rotationEffect(.degrees(showAddMenu ? 45 : 0))
+                    .frame(width: 56, height: 56)
+                    .background(.tint, in: Circle())
+                    .foregroundStyle(.white)
+                    .shadow(radius: 4, y: 2)
+            }
+            .accessibilityLabel(showAddMenu ? "Close menu" : "Add task, habit, or goal")
+        }
+    }
+
+    private func fabSubButton(label: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button {
+            withAnimation(.spring(duration: 0.2)) { showAddMenu = false }
+            action()
+        } label: {
+            HStack(spacing: 8) {
+                Text(label)
+                    .font(.subheadline.weight(.medium))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(.thinMaterial, in: Capsule())
+                Image(systemName: icon)
+                    .font(.body)
+                    .frame(width: 40, height: 40)
+                    .background(.thinMaterial, in: Circle())
+            }
+        }
+        .foregroundStyle(.primary)
+        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 
     /// Signature that changes whenever any rendered property changes — plot
