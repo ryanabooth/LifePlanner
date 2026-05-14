@@ -67,6 +67,7 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         if context.hasChanges {
             try? context.save()
         }
+        Task.detached { await SpotlightIndexer.shared.reindexAll(in: context) }
     }
 }
 

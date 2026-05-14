@@ -82,9 +82,9 @@ Expand gold sinks beyond capacity.
 ## Phase 5 — Platform
 
 - [ ] **iCloud sync.** Schema is already CloudKit-compatible. Flip the entitlement and switch to `ModelConfiguration(cloudKitDatabase:)`. Requires paid Apple Developer account.
-- [ ] **WidgetKit.** Today's quests widget; farm-snapshot widget.
-- [ ] **App Intents / Shortcuts.** "Roll today's quests", "Mark habit done", "Show farm".
-- [ ] **Spotlight.** Tasks searchable from system search.
+- [x] **WidgetKit.** Today's quests widget scaffold in `QuestsWidget/` (`QuestEntry`, `QuestProvider`, `QuestsWidgetView`, `QuestsWidgetBundle`). Remaining: add Widget Extension target in Xcode, enable App Groups on both targets, update `ModelContainer.appModelContainer()` to use the shared group URL.
+- [x] **App Intents / Shortcuts.** `ShowFarmIntent`, `RollTodaysQuestsIntent`, `MarkHabitDoneIntent` (performs background SwiftData write — no app open needed). `HabitEntity` + `HabitEntityQuery` for parameter resolution. `LifePlannerShortcuts: AppShortcutsProvider` registers all three with Siri and the Shortcuts app.
+- [x] **Spotlight.** `SpotlightIndexer` actor indexes open tasks via `CoreSpotlight`; wired into `TasksInteractor` (add/update/done/delete). `SystemEventsHandler` calls `reindexAll` on every foreground.
 
 ## Deferred / explicitly out of scope for v0.5.0
 
