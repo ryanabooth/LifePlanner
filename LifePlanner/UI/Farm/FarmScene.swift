@@ -52,6 +52,12 @@ final class FarmScene: SKScene {
     /// Populated once in `didMove`; runs forever via its own SKActions.
     private let ambientLife = AmbientLifeController()
 
+    /// Phase 3 cosmetic scene objects. Populated on `didMove`; updated via
+    /// `snapshotCosmetics(...)` whenever owned/equipped cosmetics change.
+    private let avatarController = AvatarController()
+    private let petController = PetController()
+    private let farmhouseDecoration = FarmhouseNode()
+
     override func didMove(to view: SKView) {
         super.didMove(to: view)
         backgroundColor = SKColor(red: 0.62, green: 0.82, blue: 0.45, alpha: 1.0)
@@ -62,8 +68,15 @@ final class FarmScene: SKScene {
         if goldLabel.parent == nil { addChild(goldLabel) }
         if capacityLabel.parent == nil { addChild(capacityLabel) }
         if plotsContainer.parent == nil { addChild(plotsContainer) }
+        if farmhouseDecoration.parent == nil {
+            farmhouseDecoration.zPosition = -0.5
+            addChild(farmhouseDecoration)
+        }
         ambientLife.populate(in: self)
+        avatarController.populate(in: self)
+        petController.populate(in: self)
         layoutHUD()
+        layoutFarmhouse()
         // Looping farm ambience. Silent until sfx_farm_ambience.{caf,mp3,wav,m4a}
         // is added to the bundle.
         SoundPlayer.shared.startAmbience()
@@ -78,6 +91,7 @@ final class FarmScene: SKScene {
         super.didChangeSize(oldSize)
         layoutHUD()
         layoutPlots()
+        layoutFarmhouse()
     }
 
     // MARK: - Snapshot
@@ -141,6 +155,29 @@ final class FarmScene: SKScene {
         titleLabel.position = CGPoint(x: 20, y: hudTop)
         goldLabel.position = CGPoint(x: size.width - 20, y: hudTop)
         capacityLabel.position = CGPoint(x: 20, y: hudTop - 26)
+    }
+
+    // MARK: - Cosmetics
+
+    /// Push equipped cosmetic slugs into the scene. Called by `FarmTabView`
+    /// whenever `@Query` results for `OwnedCosmetic` change.
+    func snapshotCosmetics(
+        equippedHatSlug: String?,
+        equippedOutfitSlug: String?,
+        equippedPetSlug: String?,
+        equippedDecorSlug: String?
+    ) {
+        avatarController.applyCosmetics(hatSlug: equippedHatSlug, outfitSlug: equippedOutfitSlug)
+        petController.applyCosmetics(petSlug: equippedPetSlug)
+        farmhouseDecoration.applyDecor(slug: equippedDecorSlug)
+    }
+
+    private func layoutFarmhouse() {
+        guard size.width > 0, size.height > 0 else { return }
+        farmhouseDecoration.position = CGPoint(
+            x: size.width * 0.20,
+            y: size.height * 0.62
+        )
     }
 
     private func layoutPlots(orderedPlots: [DBModel.FarmPlot]? = nil) {

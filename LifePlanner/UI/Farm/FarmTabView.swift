@@ -11,6 +11,7 @@ struct FarmTabView: View {
 
     @Query private var plots: [DBModel.FarmPlot]
     @Query private var farmStates: [DBModel.FarmState]
+    @Query private var ownedCosmetics: [DBModel.OwnedCosmetic]
 
     /// Persisted across re-renders so SpriteView doesn't reset every body
     /// evaluation. Size is provisional — the scene uses `.resizeFill` so it
@@ -24,6 +25,7 @@ struct FarmTabView: View {
     @State private var presentedPlot: PresentedPlot?
     @State private var showQuestLog = false
     @State private var showCapacityUpgrade = false
+    @State private var showCosmeticShop = false
 
     var body: some View {
         GeometryReader { proxy in
@@ -33,8 +35,10 @@ struct FarmTabView: View {
                     .onAppear {
                         scene.topSafeAreaInset = proxy.safeAreaInsets.top + 12
                         pushSnapshot()
+                        pushCosmeticSnapshot()
                     }
                     .onChange(of: snapshotSignature) { _, _ in pushSnapshot() }
+                    .onChange(of: cosmeticSignature) { _, _ in pushCosmeticSnapshot() }
                     .onChange(of: proxy.safeAreaInsets.top) { _, newInset in
                         scene.topSafeAreaInset = newInset + 12
                     }
@@ -55,6 +59,9 @@ struct FarmTabView: View {
         }
         .sheet(isPresented: $showCapacityUpgrade) {
             CapacityUpgradeSheet()
+        }
+        .sheet(isPresented: $showCosmeticShop) {
+            CosmeticShopView()
         }
     }
 
@@ -79,6 +86,16 @@ struct FarmTabView: View {
                     .background(.thinMaterial, in: Circle())
             }
             .accessibilityLabel("Expand Farm")
+
+            Button {
+                showCosmeticShop = true
+            } label: {
+                Image(systemName: "tshirt")
+                    .font(.title3)
+                    .frame(width: 40, height: 40)
+                    .background(.thinMaterial, in: Circle())
+            }
+            .accessibilityLabel("Cosmetic Shop")
         }
         .foregroundStyle(.primary)
     }
@@ -109,6 +126,26 @@ struct FarmTabView: View {
             capacity: farmStates.first?.plotCapacity ?? 0
         )
     }
+
+    /// Stable key that changes whenever the equipped set changes — drives
+    /// `onChange` without diffing individual rows.
+    private var cosmeticSignature: String {
+        CosmeticKind.allCases
+            .compactMap { kind in ownedCosmetics.first { $0.kind == kind && $0.equippedAt != nil }?.slug }
+            .joined(separator: "-")
+    }
+
+    private func pushCosmeticSnapshot() {
+        func equipped(_ kind: CosmeticKind) -> String? {
+            ownedCosmetics.first { $0.kind == kind && $0.equippedAt != nil }?.slug
+        }
+        scene.snapshotCosmetics(
+            equippedHatSlug:    equipped(.hat),
+            equippedOutfitSlug: equipped(.outfit),
+            equippedPetSlug:    equipped(.pet),
+            equippedDecorSlug:  equipped(.farmhouseDecor)
+        )
+    }
 }
 
 /// Wrapper so we can use `.sheet(item:)` — UUID isn't Identifiable.
@@ -121,6 +158,6 @@ private struct PresentedPlot: Identifiable {
         .modelContainer(for: [
             DBModel.FarmState.self, DBModel.FarmPlot.self, DBModel.Goal.self,
             DBModel.Task.self, DBModel.Habit.self, DBModel.HabitLogEntry.self,
-            DBModel.Quest.self
+            DBModel.Quest.self, DBModel.OwnedCosmetic.self
         ], inMemory: true)
 }
