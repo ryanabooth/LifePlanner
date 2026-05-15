@@ -30,6 +30,7 @@ struct FarmTabView: View {
     @State private var showCapacityUpgrade = false
     @State private var showCosmeticShop = false
     @State private var showAddMenu = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showAddTask = false
     @State private var showAddHabit = false
     @State private var showAddGoal = false
@@ -149,7 +150,7 @@ struct FarmTabView: View {
             }
 
             Button {
-                withAnimation(.spring(duration: 0.25)) {
+                withAnimation(reduceMotion ? nil : .spring(duration: 0.25)) {
                     showAddMenu.toggle()
                 }
             } label: {
@@ -167,7 +168,7 @@ struct FarmTabView: View {
 
     private func fabSubButton(label: String, icon: String, action: @escaping () -> Void) -> some View {
         Button {
-            withAnimation(.spring(duration: 0.2)) { showAddMenu = false }
+            withAnimation(reduceMotion ? nil : .spring(duration: 0.2)) { showAddMenu = false }
             action()
         } label: {
             HStack(spacing: 8) {

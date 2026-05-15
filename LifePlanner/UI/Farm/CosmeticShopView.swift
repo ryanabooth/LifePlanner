@@ -140,5 +140,17 @@ private struct CosmeticRow: View {
             }
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(rowAccessibilityLabel)
+        .accessibilityHint(isOwned ? (isEquipped ? "Double-tap to unequip" : "Double-tap to equip") : "Double-tap to purchase for \(item.goldCost) gold")
+    }
+
+    private var rowAccessibilityLabel: String {
+        var parts = [item.name, item.description]
+        if isEquipped    { parts.append("equipped") }
+        else if isOwned  { parts.append("owned") }
+        else             { parts.append("\(item.goldCost) gold") }
+        if !isOwned && gold < item.goldCost { parts.append("not enough gold") }
+        return parts.joined(separator: ", ")
     }
 }

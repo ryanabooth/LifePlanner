@@ -99,6 +99,7 @@ private struct HabitRow: View {
                     .frame(width: 32, height: 32)
             }
             .buttonStyle(.borderless)
+            .accessibilityLabel(doneToday ? "Habit logged today" : "Log habit")
 
             Button(action: onEdit) {
                 HStack {
@@ -113,6 +114,7 @@ private struct HabitRow: View {
                             }
                             if habit.currentStreak >= 2 {
                                 Text("🔥 \(habit.currentStreak)")
+                                    .accessibilityLabel("\(habit.currentStreak) day streak")
                             }
                         }
                         .font(.caption)

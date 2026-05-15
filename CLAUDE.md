@@ -95,6 +95,15 @@ All tests live in `UnitTests/LifePlannerTests.swift` (one file by design — kee
 
 `scripts/testflight.sh` does bump → archive → export → upload. Credentials live in `scripts/.env` (gitignored). Two auth modes supported: App Store Connect API key (preferred) or Apple ID + app-specific password. Latest uploaded build is in the project's `CURRENT_PROJECT_VERSION`.
 
+## Accessibility patterns
+
+- **Every new interactive element** needs `.contentShape(Rectangle())` for hit-testing and `.accessibilityLabel` if the visible label is ambiguous (icon-only buttons, emoji badges).
+- **SwiftUI reduce motion**: read `@Environment(\.accessibilityReduceMotion)` and pass `nil` as the animation argument: `withAnimation(reduceMotion ? nil : .spring(...))`.
+- **SpriteKit reduce motion**: check `UIAccessibility.isReduceMotionEnabled` before starting looping or transition animations. Guard at the top of `playWitherShake`, `playContributionPulse`, `pulseGoldLabel`, `burstConfetti`, and the wing-flap loops in `AmbientLifeController`.
+- **SpriteKit VoiceOver**: set `isAccessibilityElement = true`, `accessibilityLabel`, `accessibilityTraits`, and `accessibilityHint` on interactive `SKNode` subclasses. Override `accessibilityActivate() -> Bool` and call an `onAccessibilityActivate` callback to route the event back to the scene/SwiftUI layer (see `PlotNode`).
+- **List rows with mixed content**: use `.accessibilityElement(children: .combine)` + a hand-crafted `.accessibilityLabel` that reads all meaningful fields in natural-language order (see `QuestRow`, `CosmeticRow`).
+- **Dynamic Type**: all SwiftUI views already use named text styles (`.body`, `.caption`, etc.) — never use `.font(.system(size: X))`. SpriteKit HUD labels use fixed point sizes and cannot participate in Dynamic Type; that is acceptable for the v1 farm scene.
+
 ## ROADMAP
 
 The living roadmap is `ROADMAP.md` at the project root. It's edited freely as work progresses — keep it accurate. Phases 1–6 have shipped; remaining work is documented as `[ ]` items plus a "Deferred" section for things blocked on external resources (paid Apple dev account, AI assets, audio, telemetry backend).

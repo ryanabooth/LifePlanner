@@ -74,11 +74,13 @@ final class AmbientLifeController {
         butterfly.addChild(rightWing)
 
         // Wing flap: scale Y axis 1.0 -> 0.4 and back, ~5 Hz.
-        let flapDown = SKAction.scaleY(to: 0.4, duration: 0.10)
-        let flapUp = SKAction.scaleY(to: 1.0, duration: 0.10)
-        let flap = SKAction.repeatForever(SKAction.sequence([flapDown, flapUp]))
-        leftWing.run(flap)
-        rightWing.run(flap)
+        if !UIAccessibility.isReduceMotionEnabled {
+            let flapDown = SKAction.scaleY(to: 0.4, duration: 0.10)
+            let flapUp = SKAction.scaleY(to: 1.0, duration: 0.10)
+            let flap = SKAction.repeatForever(SKAction.sequence([flapDown, flapUp]))
+            leftWing.run(flap)
+            rightWing.run(flap)
+        }
 
         // Start in a random spot near the plot row vertical zone.
         butterfly.position = randomPosition(
@@ -109,9 +111,11 @@ final class AmbientLifeController {
         bird.addChild(shape)
 
         // Slow horizontal flap to feel like wing-beats.
-        let widen = SKAction.scaleX(to: 1.2, duration: 0.35)
-        let narrow = SKAction.scaleX(to: 0.85, duration: 0.35)
-        shape.run(SKAction.repeatForever(SKAction.sequence([widen, narrow])))
+        if !UIAccessibility.isReduceMotionEnabled {
+            let widen = SKAction.scaleX(to: 1.2, duration: 0.35)
+            let narrow = SKAction.scaleX(to: 0.85, duration: 0.35)
+            shape.run(SKAction.repeatForever(SKAction.sequence([widen, narrow])))
+        }
 
         // Birds live higher up.
         bird.position = randomPosition(in: scene, yRange: 0.70...0.92)

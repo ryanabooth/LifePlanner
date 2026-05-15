@@ -112,6 +112,7 @@ private struct QuestRow: View {
     let onReroll: () -> Void
 
     @State private var flashGreen = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -140,6 +141,8 @@ private struct QuestRow: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     .disabled(!canAfford)
+                    .accessibilityLabel("Reroll quest, costs \(QuestTuning.rerollCost(for: quest.rerollCount)) gold")
+                    .accessibilityHint(canAfford ? "" : "Not enough gold")
                 }
             }
         }
@@ -149,13 +152,30 @@ private struct QuestRow: View {
                 .fill(Color.green.opacity(flashGreen ? 0.22 : 0))
                 .allowsHitTesting(false)
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(rowAccessibilityLabel)
         .onChange(of: quest.state) { _, newState in
             guard newState == .completed else { return }
-            withAnimation(.easeIn(duration: 0.1)) { flashGreen = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
-                withAnimation(.easeOut(duration: 0.45)) { flashGreen = false }
+            if reduceMotion {
+                flashGreen = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) { flashGreen = false }
+            } else {
+                withAnimation(.easeIn(duration: 0.1)) { flashGreen = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.75) {
+                    withAnimation(.easeOut(duration: 0.45)) { flashGreen = false }
+                }
             }
         }
+    }
+
+    private var rowAccessibilityLabel: String {
+        let stateText: String
+        switch quest.state {
+        case .active:    stateText = "active"
+        case .completed: stateText = "claimed"
+        case .expired:   stateText = "expired"
+        }
+        return "\(headline), reward \(quest.goldReward) gold, \(stateText)"
     }
 
     private var headline: String {
@@ -223,6 +243,12 @@ private struct WeeklyQuestRow: View {
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel({
+            let progress = "Progress: \(quest.progress) of \(quest.progressTarget)"
+            let state = quest.state == .completed ? "claimed" : quest.state == .expired ? "expired" : "active"
+            return "Weekly harvest quest, \(progress), reward \(quest.goldReward) gold, \(state)"
+        }())
     }
 
     @ViewBuilder

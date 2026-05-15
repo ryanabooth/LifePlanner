@@ -43,6 +43,15 @@ final class PlotNode: SKNode {
         static let dissolve = "death-dissolve"
     }
 
+    /// Called when VoiceOver double-taps the node. Set by FarmScene so the scene
+    /// can publish the tappedPlotID event without coupling PlotNode to the scene.
+    var onAccessibilityActivate: (() -> Void)?
+
+    override func accessibilityActivate() -> Bool {
+        onAccessibilityActivate?()
+        return true
+    }
+
     init(plot: DBModel.FarmPlot) {
         self.plotID = plot.id
         self.lastHealth = plot.health
@@ -73,6 +82,9 @@ final class PlotNode: SKNode {
 
         super.init()
         userData = ["plotID": plot.id.uuidString]
+        isAccessibilityElement = true
+        accessibilityTraits = .button
+        accessibilityHint = "Double-tap to open plot details"
         addChild(sprite)
         healthBarBackground.position = CGPoint(x: 0, y: Self.tileSize / 2 + 8)
         healthBar.position = healthBarBackground.position
@@ -86,6 +98,19 @@ final class PlotNode: SKNode {
         applyVisuals(plot: plot)
         // Initial render — no animations, just baseline visuals + idle.
         updateIdleAnimation(for: plot.state)
+    }
+
+    private func updateAccessibilityLabel(plot: DBModel.FarmPlot) {
+        let goalTitle = plot.goal?.title ?? "Common Field"
+        let stateText: String
+        switch plot.state {
+        case .empty:     stateText = "empty"
+        case .growing:   stateText = "growing"
+        case .mature:    stateText = "mature"
+        case .withered:  stateText = "withered"
+        case .dead:      stateText = "dead"
+        }
+        accessibilityLabel = "\(goalTitle), \(stateText), \(plot.health)% health"
     }
 
     @available(*, unavailable)
@@ -131,6 +156,7 @@ final class PlotNode: SKNode {
         healthBar.size = CGSize(width: max(1, barWidth * fraction), height: 6)
         healthBar.color = barColor(for: clamped, state: plot.state)
         label.text = plot.goal?.title ?? "Common Field"
+        updateAccessibilityLabel(plot: plot)
     }
 
     // MARK: - Animations
@@ -138,7 +164,7 @@ final class PlotNode: SKNode {
     /// Healthy plots breathe; withered/dead plots sit still. Idempotent — only
     /// (re)adds the action when its presence needs to change.
     private func updateIdleAnimation(for state: PlotState) {
-        let shouldIdle = (state == .growing || state == .mature)
+        let shouldIdle = (state == .growing || state == .mature) && !UIAccessibility.isReduceMotionEnabled
         let hasIdle = sprite.action(forKey: ActionKey.idle) != nil
         if shouldIdle && !hasIdle {
             // Gentle ±0.04 rad sway, ~2s per cycle. Run on sprite only so the
@@ -162,6 +188,7 @@ final class PlotNode: SKNode {
     /// Brief scale pulse + radial sparkle burst when health goes up.
     private func playContributionPulse() {
         Task { @MainActor in SoundPlayer.shared.play(.contribution) }
+        guard !UIAccessibility.isReduceMotionEnabled else { return }
 
         let scaleUp = SKAction.scale(to: 1.12, duration: 0.10)
         scaleUp.timingMode = .easeOut
@@ -169,8 +196,6 @@ final class PlotNode: SKNode {
         scaleDown.timingMode = .easeIn
         sprite.run(SKAction.sequence([scaleUp, scaleDown]), withKey: ActionKey.pulse)
 
-        // 6 tiny yellow dots radiate outward and fade. Procedural so we don't
-        // ship a .sks particle file.
         let count = 6
         let radius: CGFloat = Self.tileSize * 0.55
         for index in 0..<count {
@@ -194,6 +219,7 @@ final class PlotNode: SKNode {
 
     /// Quick rotational shake when a plot withers.
     private func playWitherShake() {
+        guard !UIAccessibility.isReduceMotionEnabled else { return }
         let amplitude: CGFloat = 0.18
         let s1 = SKAction.rotate(toAngle:  amplitude, duration: 0.06)
         let s2 = SKAction.rotate(toAngle: -amplitude, duration: 0.10)
@@ -205,6 +231,11 @@ final class PlotNode: SKNode {
     /// Fade + slight shrink when a plot dies — leaves the sprite visible but
     /// muted so the user can still tap to re-plant.
     private func playDeathDissolve() {
+        if UIAccessibility.isReduceMotionEnabled {
+            sprite.alpha = 0.55
+            sprite.setScale(0.85)
+            return
+        }
         let fade = SKAction.fadeAlpha(to: 0.55, duration: 0.45)
         fade.timingMode = .easeIn
         let shrink = SKAction.scale(to: 0.85, duration: 0.45)
