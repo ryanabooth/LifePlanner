@@ -21,6 +21,7 @@ final class SoundPlayer {
         case contribution = "sfx_contribution"
         case questClaim   = "sfx_quest_claim"
         case questReroll  = "sfx_quest_reroll"
+        case purchase     = "sfx_purchase"
     }
 
     private static let ambienceResource = "sfx_farm_ambience"
