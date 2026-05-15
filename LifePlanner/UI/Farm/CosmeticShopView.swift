@@ -72,6 +72,7 @@ struct CosmeticShopView: View {
     private func purchase(_ item: CosmeticCatalogItem) {
         do {
             try injected.interactors.cosmetics.purchase(slug: item.slug, in: modelContext)
+            SoundPlayer.shared.play(.purchase)
         } catch EconomyError.insufficientGold(let have, let need) {
             purchaseError = "Not enough gold — you have \(have) but \(item.name) costs \(need)."
         } catch {

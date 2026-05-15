@@ -35,6 +35,7 @@ struct CapacityUpgradeSheet: View {
                 Section {
                     Button {
                         try? injected.interactors.farm.purchaseCapacity(in: modelContext)
+                        SoundPlayer.shared.play(.purchase)
                     } label: {
                         Label(
                             "Buy 1 plot (–\(upgradeCost) gold)",
