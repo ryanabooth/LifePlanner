@@ -18,7 +18,7 @@ extension AppEnvironment {
             if isRunningTests {
                 Text("Running unit tests")
             } else {
-                MainTabView()
+                ContentView()
                     .modifier(RootViewAppearance())
                     .modelContainer(modelContainer)
                     .inject(diContainer)

@@ -11,7 +11,11 @@ enum MainTab: Hashable {
 struct MainTabView: View {
 
     @Environment(\.injected) private var injected: DIContainer
-    @State private var selection: MainTab = .farm
+    @Binding var selection: MainTab
+
+    init(selection: Binding<MainTab> = .constant(.farm)) {
+        _selection = selection
+    }
 
     var body: some View {
         TabView(selection: $selection) {
