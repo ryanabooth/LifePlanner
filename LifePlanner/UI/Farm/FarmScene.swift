@@ -131,6 +131,9 @@ final class FarmScene: SKScene {
                 existing.apply(plot: plot)
             } else {
                 let node = PlotNode(plot: plot)
+                node.onAccessibilityActivate = { [weak self, id = plot.id] in
+                    self?.tappedPlotID.send(id)
+                }
                 plotNodes[plot.id] = node
                 plotsContainer.addChild(node)
             }
@@ -170,6 +173,7 @@ final class FarmScene: SKScene {
     // MARK: - Celebration
 
     private func pulseGoldLabel() {
+        guard !UIAccessibility.isReduceMotionEnabled else { return }
         goldLabel.removeAction(forKey: "goldPulse")
         let duration: TimeInterval = 0.55
         let pulse = SKAction.customAction(withDuration: duration) { node, elapsed in
@@ -188,6 +192,7 @@ final class FarmScene: SKScene {
     }
 
     private func burstConfetti(at origin: CGPoint) {
+        guard !UIAccessibility.isReduceMotionEnabled else { return }
         let colors: [UIColor] = [.systemYellow, .systemOrange, .systemGreen, .white, .systemCyan, .systemPink]
         let count = 18
         for i in 0..<count {
@@ -282,7 +287,11 @@ final class FarmScene: SKScene {
             // rather than jumpy. New nodes (just added this frame) snap in
             // place via the .move action's short duration.
             node.removeAction(forKey: "layout")
-            node.run(SKAction.move(to: target, duration: 0.15), withKey: "layout")
+            if UIAccessibility.isReduceMotionEnabled {
+                node.position = target
+            } else {
+                node.run(SKAction.move(to: target, duration: 0.15), withKey: "layout")
+            }
         }
     }
 }
