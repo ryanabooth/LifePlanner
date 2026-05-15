@@ -53,7 +53,7 @@ final class PlotNode: SKNode {
 
         let spriteSize = initialSize * Self.spriteScale
         let texture = PlotTextureFactory.texture(for: plot.kind, state: plot.state, size: spriteSize)
-        self.sprite = SKSpriteNode(texture: texture, size: CGSize(width: spriteSize, height: spriteSize))
+        self.sprite = SKSpriteNode(texture: texture, size: CGSize(width: spriteSize * 0.8, height: spriteSize))
 
         let barWidth = initialSize * 0.9
         self.healthBarBackground = SKSpriteNode(
@@ -77,13 +77,13 @@ final class PlotNode: SKNode {
         addChild(sprite)
 
         let spriteHalf = spriteSize / 2
-        healthBarBackground.position = CGPoint(x: 0, y: spriteHalf * 0.68)
+        healthBarBackground.position = CGPoint(x: 0, y: -spriteHalf * 0.55 - 8)
         healthBar.position   = healthBarBackground.position
         healthBar.anchorPoint = CGPoint(x: 0, y: 0.5)
         healthBar.position.x  = -barWidth / 2
+        label.position = CGPoint(x: 0, y: -spriteHalf * 0.55 - 18)
         addChild(healthBarBackground)
         addChild(healthBar)
-        label.position = CGPoint(x: 0, y: -spriteHalf * 0.68)
         addChild(label)
 
         applyVisuals(plot: plot)
@@ -105,17 +105,17 @@ final class PlotNode: SKNode {
         let spriteHalf = spriteSize / 2
         let barWidth   = newTileSize * 0.9
 
-        sprite.size    = CGSize(width: spriteSize, height: spriteSize)
+        sprite.size    = CGSize(width: spriteSize * 0.8, height: spriteSize)
         sprite.texture = PlotTextureFactory.texture(for: currentKind, state: lastState, size: spriteSize)
 
         healthBarBackground.size.width = barWidth
-        healthBarBackground.position   = CGPoint(x: 0, y: spriteHalf * 0.68)
+        healthBarBackground.position   = CGPoint(x: 0, y: -spriteHalf * 0.55 - 8)
 
         let fraction = CGFloat(max(0, min(100, lastHealth))) / 100
         healthBar.size.width = max(1, barWidth * fraction)
-        healthBar.position   = CGPoint(x: -barWidth / 2, y: spriteHalf * 0.68)
+        healthBar.position   = CGPoint(x: -barWidth / 2, y: -spriteHalf * 0.55 - 8)
 
-        label.position = CGPoint(x: 0, y: -spriteHalf * 0.68)
+        label.position = CGPoint(x: 0, y: -spriteHalf * 0.55 - 18)
     }
 
     // MARK: - Apply

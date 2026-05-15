@@ -18,9 +18,8 @@ final class AmbientLifeController {
     private let butterflyCount = 3
     private let birdCount = 1
 
-    /// Z-position for ambient life — between the green background (0) and the
-    /// plot nodes (default zPosition higher in the scene).
-    private static let zBackground: CGFloat = -1
+    /// Z-position for ambient life — above plot nodes (0) but below sparkles (10).
+    private static let zBackground: CGFloat = 5
 
     func populate(in scene: SKScene) {
         parentScene = scene
