@@ -25,36 +25,45 @@ enum PlotTextureFactory {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
         let image = renderer.image { ctx in
             let cgCtx = ctx.cgContext
-            let rect = CGRect(x: 0, y: 0, width: size, height: size)
+            let half = size / 2
+            let inset: CGFloat = 4
 
-            // Base tile with rounded corners.
+            // Diamond path clipped so the placeholder matches the PNG tile shape.
+            let diamond = UIBezierPath()
+            diamond.move(to:    CGPoint(x: half,        y: inset))
+            diamond.addLine(to: CGPoint(x: size - inset, y: half))
+            diamond.addLine(to: CGPoint(x: half,        y: size - inset))
+            diamond.addLine(to: CGPoint(x: inset,       y: half))
+            diamond.close()
+
             let baseColor = baseFill(for: kind).adjusted(for: state)
-            let path = UIBezierPath(roundedRect: rect.insetBy(dx: 4, dy: 4), cornerRadius: 12)
             baseColor.setFill()
-            path.fill()
+            diamond.fill()
 
-            // Glyph in the middle so the kind is identifiable without text.
+            // Subtle darker border.
+            baseColor.withAlphaComponent(0.5).setStroke()
+            diamond.lineWidth = 2
+            diamond.stroke()
+
+            // Glyph centred in the diamond.
             let glyph = glyph(for: kind, state: state)
             let attrs: [NSAttributedString.Key: Any] = [
-                .font: UIFont.systemFont(ofSize: size * 0.55),
+                .font: UIFont.systemFont(ofSize: size * 0.38),
                 .foregroundColor: UIColor.white.withAlphaComponent(state == .dead ? 0.4 : 0.95)
             ]
-            let glyphString = NSAttributedString(string: glyph, attributes: attrs)
-            let textSize = glyphString.size()
-            let textPoint = CGPoint(
-                x: (size - textSize.width) / 2,
-                y: (size - textSize.height) / 2
-            )
-            glyphString.draw(at: textPoint)
+            let glyphStr  = NSAttributedString(string: glyph, attributes: attrs)
+            let glyphSize = glyphStr.size()
+            glyphStr.draw(at: CGPoint(x: (size - glyphSize.width) / 2,
+                                      y: (size - glyphSize.height) / 2))
 
-            // Dead overlay: a stark X so withered/dead are visually distinct.
+            // Dead X overlay.
             if state == .dead {
-                cgCtx.setStrokeColor(UIColor(red: 0.4, green: 0.2, blue: 0.1, alpha: 1).cgColor)
+                cgCtx.setStrokeColor(UIColor(red: 0.4, green: 0.2, blue: 0.1, alpha: 0.8).cgColor)
                 cgCtx.setLineWidth(size * 0.05)
-                cgCtx.move(to: CGPoint(x: size * 0.2, y: size * 0.2))
-                cgCtx.addLine(to: CGPoint(x: size * 0.8, y: size * 0.8))
-                cgCtx.move(to: CGPoint(x: size * 0.8, y: size * 0.2))
-                cgCtx.addLine(to: CGPoint(x: size * 0.2, y: size * 0.8))
+                cgCtx.move(to: CGPoint(x: size * 0.3, y: size * 0.3))
+                cgCtx.addLine(to: CGPoint(x: size * 0.7, y: size * 0.7))
+                cgCtx.move(to: CGPoint(x: size * 0.7, y: size * 0.3))
+                cgCtx.addLine(to: CGPoint(x: size * 0.3, y: size * 0.7))
                 cgCtx.strokePath()
             }
         }

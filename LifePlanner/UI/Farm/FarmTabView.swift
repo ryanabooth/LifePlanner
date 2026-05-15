@@ -50,7 +50,8 @@ struct FarmTabView: View {
                 SpriteView(scene: scene)
                     .ignoresSafeArea()
                     .onAppear {
-                        scene.topSafeAreaInset = proxy.safeAreaInsets.top + 12
+                        scene.topSafeAreaInset    = proxy.safeAreaInsets.top + 12
+                        scene.bottomSafeAreaInset = proxy.safeAreaInsets.bottom + 49
                         pushSnapshot()
                         pushCosmeticSnapshot()
                     }
@@ -58,6 +59,9 @@ struct FarmTabView: View {
                     .onChange(of: cosmeticSignature) { _, _ in pushCosmeticSnapshot() }
                     .onChange(of: proxy.safeAreaInsets.top) { _, newInset in
                         scene.topSafeAreaInset = newInset + 12
+                    }
+                    .onChange(of: proxy.safeAreaInsets.bottom) { _, newInset in
+                        scene.bottomSafeAreaInset = newInset + 49
                     }
                     .onReceive(scene.tappedPlotID) { id in
                         presentedPlot = PresentedPlot(id: id)

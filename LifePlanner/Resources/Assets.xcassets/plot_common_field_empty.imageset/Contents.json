@@ -1,0 +1,13 @@
+{
+  "images" : [
+    {
+      "filename" : "plot_common_field_empty.png",
+      "idiom" : "universal",
+      "scale" : "1x"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
