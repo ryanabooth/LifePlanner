@@ -61,6 +61,7 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         let context = modelContainer.mainContext
         let now = Date()
         container.interactors.farm.applyDailyDecay(now: now, in: context)
+        container.interactors.weather.rollDaily(on: now, in: context)
         container.interactors.quests.expireOldQuests(on: now, in: context)
         container.interactors.quests.rollDaily(on: now, in: context)
         container.interactors.quests.rollWeekly(on: now, in: context)

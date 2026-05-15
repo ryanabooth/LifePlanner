@@ -15,6 +15,12 @@ struct PlotDetailSheet: View {
     /// Re-queried by id so SwiftData updates (health change, state transition,
     /// re-plant) reflect immediately while the sheet is open.
     @Query private var plots: [DBModel.FarmPlot]
+    @Query private var weatherEvents: [DBModel.WeatherEvent]
+
+    private var activeWeather: DBModel.WeatherEvent? {
+        let now = Date()
+        return weatherEvents.first { $0.startedAt <= now && $0.expiresAt > now }
+    }
 
     init(plotID: UUID) {
         self.plotID = plotID
@@ -79,6 +85,24 @@ struct PlotDetailSheet: View {
             LabeledContent("Health", value: "\(plot.health) / 100")
             ProgressView(value: Double(plot.health), total: 100)
                 .tint(healthTint(plot.health, state: plot.state))
+            if let weather = activeWeather, weather.kind != .clear,
+               let modifier = weatherModifierText(for: weather.kind, plotKind: plot.kind) {
+                LabeledContent("Today", value: modifier)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func weatherModifierText(for kind: WeatherKind, plotKind: FarmElementType) -> String? {
+        switch kind {
+        case .rain:
+            return plotKind == .commonField ? nil : "+100% from rain 🌧"
+        case .drought:
+            return "–50% task contributions, ×1.5 decay 🔥"
+        case .sunshine:
+            return plotKind == .commonField ? "Passive gold today ☀️" : nil
+        default:
+            return nil
         }
     }
 

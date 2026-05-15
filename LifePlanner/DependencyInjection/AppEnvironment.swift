@@ -61,6 +61,7 @@ extension AppEnvironment {
             scheduler: scheduler, economy: economy, farm: farm, quests: quests)
         let goals = RealGoalsInteractor(farm: farm)
         let cosmetics = RealCosmeticInteractor(economy: economy)
+        let weather = RealWeatherInteractor(economy: economy, farm: farm)
         return .init(
             userPermissions: userPermissions,
             tasks: tasks,
@@ -69,7 +70,8 @@ extension AppEnvironment {
             economy: economy,
             farm: farm,
             quests: quests,
-            cosmetics: cosmetics
+            cosmetics: cosmetics,
+            weather: weather
         )
     }
 }
