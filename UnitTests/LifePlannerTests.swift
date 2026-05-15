@@ -213,7 +213,7 @@ final class LifePlannerTests: XCTestCase {
         let container = try ModelContainer(
             for: DBModel.FarmState.self, DBModel.FarmPlot.self, DBModel.Goal.self,
                 DBModel.Task.self, DBModel.Habit.self, DBModel.HabitLogEntry.self,
-                DBModel.Quest.self,
+                DBModel.Quest.self, DBModel.WeatherEvent.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         return ModelContext(container)
@@ -1316,5 +1316,107 @@ final class LifePlannerTests: XCTestCase {
         XCTAssertEqual(grouped[.taskDue]?.count, 2)
         XCTAssertEqual(grouped[.habitDue]?.count, 1)
         XCTAssertNil(grouped[.commonFieldTend])
+    }
+
+    // MARK: - Weather
+
+    @MainActor
+    func test_weather_rollDaily_isIdempotent() throws {
+        let context = try makeFarmContext()
+        let interactor = RealWeatherInteractor(
+            economy: StubEconomyInteractor(),
+            farm: StubFarmInteractor()
+        )
+        let today = Date()
+        interactor.rollDaily(on: today, in: context)
+        interactor.rollDaily(on: today, in: context)  // second roll should no-op
+
+        let all = try context.fetch(FetchDescriptor<DBModel.WeatherEvent>())
+        XCTAssertEqual(all.count, 1)
+    }
+
+    @MainActor
+    func test_weather_rollDaily_differentDaysProduceTwoEvents() throws {
+        let context = try makeFarmContext()
+        let interactor = RealWeatherInteractor(
+            economy: StubEconomyInteractor(),
+            farm: StubFarmInteractor()
+        )
+        let today = Date()
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: today)!
+        interactor.rollDaily(on: yesterday, in: context)
+        interactor.rollDaily(on: today, in: context)
+
+        let all = try context.fetch(FetchDescriptor<DBModel.WeatherEvent>())
+        XCTAssertEqual(all.count, 2)
+    }
+
+    @MainActor
+    func test_weather_rainDoublesHabitContribution() throws {
+        let context = try makeFarmContext()
+        let farm = RealFarmInteractor()
+        farm.bootstrap(in: context)
+
+        // Insert a rain event covering now
+        let today = Calendar.current.startOfDay(for: Date())
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
+        let rain = DBModel.WeatherEvent(kind: .rain, startedAt: today, expiresAt: tomorrow)
+        context.insert(rain)
+        context.saveQuietly()
+
+        // Add a goal+plot and link a habit
+        let goalInteractor = RealGoalsInteractor(farm: farm)
+        goalInteractor.add(GoalDraft(title: "Fitness"), in: context)
+        let goal = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Goal>()).first)
+
+        let habitInteractor = RealHabitsInteractor(farm: farm)
+        habitInteractor.add(HabitDraft(title: "Run"), in: context)
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+        goal.linkedHabits = [habit]
+        habit.goals = [goal]
+        context.saveQuietly()
+
+        let plot = try XCTUnwrap(goal.plot)
+        let healthBefore = plot.health
+
+        habitInteractor.toggleDone(habit, on: Date(), in: context)
+
+        // Rain doubles the 20-pt habit contribution → expect 40 pts gained
+        XCTAssertEqual(plot.health, min(100, healthBefore + FarmTuning.habitContribution * 2))
+    }
+
+    @MainActor
+    func test_weather_droughtHalvesTaskContribution() throws {
+        let context = try makeFarmContext()
+        let farm = RealFarmInteractor()
+        farm.bootstrap(in: context)
+
+        // Insert a drought event
+        let today = Calendar.current.startOfDay(for: Date())
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today)!
+        let drought = DBModel.WeatherEvent(kind: .drought, startedAt: today, expiresAt: tomorrow)
+        context.insert(drought)
+        context.saveQuietly()
+
+        let goalInteractor = RealGoalsInteractor(farm: farm)
+        goalInteractor.add(GoalDraft(title: "Career"), in: context)
+        let goal = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Goal>()).first)
+
+        let taskInteractor = RealTasksInteractor(farm: farm)
+        taskInteractor.add(TaskDraft(title: "Write report", priority: .normal), in: context)
+        let task = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Task>()).first)
+        goal.linkedTasks = [task]
+        task.goals = [goal]
+        context.saveQuietly()
+
+        let plot = try XCTUnwrap(goal.plot)
+        let healthBefore = plot.health
+
+        taskInteractor.toggleDone(task, in: context)
+
+        // Drought halves normal-priority task contribution (10 base + 5 bonus = 15 → 8 rounded)
+        let baseAmount = FarmTuning.taskBaseContribution + (FarmTuning.taskPriorityBonus[.normal] ?? 0)
+        let expected = max(1, Int((Double(baseAmount) * 0.5).rounded()))
+        XCTAssertEqual(plot.health, min(100, healthBefore + expected))
     }
 }

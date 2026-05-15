@@ -33,6 +33,10 @@ enum FarmTuning {
 
     // Economy.
     static let replantCost = 15
+
+    // Weather side-effects.
+    static let weatherSunshineGold = 15
+    static let weatherStormDamage  = 30
     static func upgradeCost(currentCapacity: Int) -> Int {
         10 + currentCapacity * 5
     }
@@ -179,30 +183,40 @@ final class RealFarmInteractor: FarmInteractor {
 
     @discardableResult
     func applyHabitCompletion(_ habit: DBModel.Habit, in context: ModelContext) -> Int {
+        let weather = activeWeatherKind(in: context)
         let goals = habit.goals ?? []
         if goals.isEmpty {
-            applyContributionToCommonField(amount: FarmTuning.commonFieldContribution, in: context)
+            let amount = max(1, Int((Double(FarmTuning.commonFieldContribution) * weather.habitMultiplier).rounded()))
+            applyContributionToCommonField(amount: amount, in: context)
             return 0
         }
+        let amount = max(1, Int((Double(FarmTuning.habitContribution) * weather.habitMultiplier).rounded()))
         return goals.reduce(0) { sum, goal in
             guard let plot = goal.plot else { return sum }
-            return sum + (applyContribution(amount: FarmTuning.habitContribution, to: plot) ? 1 : 0)
+            return sum + (applyContribution(amount: amount, to: plot) ? 1 : 0)
         }
     }
 
     @discardableResult
     func applyTaskCompletion(_ task: DBModel.Task, in context: ModelContext) -> Int {
+        let weather = activeWeatherKind(in: context)
+        let base = FarmTuning.taskBaseContribution + (FarmTuning.taskPriorityBonus[task.priority] ?? 0)
+        let amount = max(1, Int((Double(base) * weather.taskMultiplier).rounded()))
         let goals = task.goals ?? []
-        let amount = FarmTuning.taskBaseContribution
-            + (FarmTuning.taskPriorityBonus[task.priority] ?? 0)
         if goals.isEmpty {
-            applyContributionToCommonField(amount: FarmTuning.commonFieldContribution, in: context)
+            applyContributionToCommonField(amount: amount, in: context)
             return 0
         }
         return goals.reduce(0) { sum, goal in
             guard let plot = goal.plot else { return sum }
             return sum + (applyContribution(amount: amount, to: plot) ? 1 : 0)
         }
+    }
+
+    private func activeWeatherKind(in context: ModelContext) -> WeatherKind {
+        let now = Date()
+        let all = (try? context.fetch(FetchDescriptor<DBModel.WeatherEvent>())) ?? []
+        return all.first { $0.startedAt <= now && $0.expiresAt > now }?.kind ?? .clear
     }
 
     /// Returns `true` if this contribution caused the plot to newly reach mature.
@@ -241,20 +255,21 @@ final class RealFarmInteractor: FarmInteractor {
         }
         guard daysElapsed > 0 else { return }
 
+        let decayMultiplier = activeWeatherKind(in: context).decayMultiplier
         let allPlots = (try? context.fetch(FetchDescriptor<DBModel.FarmPlot>())) ?? []
         for plot in allPlots where plot.kind != .commonField {
-            decay(plot: plot, days: daysElapsed)
+            decay(plot: plot, days: daysElapsed, multiplier: decayMultiplier)
         }
         // Common field decays at half rate so it slowly drifts but rarely dies.
         if let common = allPlots.first(where: { $0.kind == .commonField }) {
-            decay(plot: common, days: max(1, daysElapsed / 2))
+            decay(plot: common, days: max(1, daysElapsed / 2), multiplier: decayMultiplier)
         }
     }
 
-    private func decay(plot: DBModel.FarmPlot, days: Int) {
+    private func decay(plot: DBModel.FarmPlot, days: Int, multiplier: Double = 1.0) {
         guard plot.state != .dead else { return }
         let prevState = plot.state
-        let totalDecay = days * FarmTuning.decayPerDay
+        let totalDecay = Int((Double(days * FarmTuning.decayPerDay) * multiplier).rounded())
         plot.health = clamp(plot.health - totalDecay)
         plot.updatedAt = Date()
 

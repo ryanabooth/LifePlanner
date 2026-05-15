@@ -74,6 +74,7 @@
 				Repositories/Models/OwnedCosmetic.swift,
 				Repositories/Models/Quest.swift,
 				Repositories/Models/Task.swift,
+				Repositories/Models/WeatherEvent.swift,
 			);
 			target = 3171A70B2FB65E8800304319 /* QuestsWidgetExtension */;
 		};

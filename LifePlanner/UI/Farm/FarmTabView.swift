@@ -30,7 +30,15 @@ struct FarmTabView: View {
     @State private var showCapacityUpgrade = false
     @State private var showCosmeticShop = false
     @State private var showAddMenu = false
+    @State private var showWeatherExplainer = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @Query private var weatherEvents: [DBModel.WeatherEvent]
+
+    private var activeWeather: DBModel.WeatherEvent? {
+        let now = Date()
+        return weatherEvents.first { $0.startedAt <= now && $0.expiresAt > now }
+    }
     @State private var showAddTask = false
     @State private var showAddHabit = false
     @State private var showAddGoal = false
@@ -60,6 +68,11 @@ struct FarmTabView: View {
 
                 overlayButtons
                     .padding(.trailing, 16)
+                    .padding(.top, proxy.safeAreaInsets.top + 48)
+
+                WeatherHUDPill(event: activeWeather, onTap: { showWeatherExplainer = true })
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(.leading, 16)
                     .padding(.top, proxy.safeAreaInsets.top + 48)
             }
             .overlay(alignment: .bottomTrailing) {
@@ -97,6 +110,9 @@ struct FarmTabView: View {
         }
         .sheet(isPresented: $showDevMenu) {
             DevMenuView()
+        }
+        .sheet(isPresented: $showWeatherExplainer) {
+            WeatherExplainerSheet(event: activeWeather)
         }
     }
 
