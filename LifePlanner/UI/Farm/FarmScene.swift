@@ -231,6 +231,12 @@ final class FarmScene: SKScene {
         didSet { layoutHUD() }
     }
 
+    /// Height of the tab bar + home indicator at the bottom. Used to keep the
+    /// plot grid above the tab bar. Passed in from `FarmTabView`.
+    var bottomSafeAreaInset: CGFloat = 83 {
+        didSet { layoutPlots() }
+    }
+
     private func layoutHUD() {
         // Skip if the scene hasn't been sized yet (zero-size during init).
         guard size.width > 0, size.height > 0 else { return }
@@ -264,28 +270,56 @@ final class FarmScene: SKScene {
     }
 
     private func layoutPlots(orderedPlots: [DBModel.FarmPlot]? = nil) {
-        // If no explicit order is provided (resize path), sort the current set.
         let ordered: [PlotNode]
         if let orderedPlots {
             ordered = orderedPlots.compactMap { plotNodes[$0.id] }
         } else {
             ordered = plotNodes.values.sorted { $0.position.x < $1.position.x }
         }
+        guard !ordered.isEmpty, size.width > 0, size.height > 0 else { return }
 
-        let tile = PlotNode.tileSize
-        let spacing: CGFloat = 14
-        let totalWidth = CGFloat(ordered.count) * tile + CGFloat(max(0, ordered.count - 1)) * spacing
-        let startX = max(20, (size.width - totalWidth) / 2) + tile / 2
-        let centerY = size.height * 0.45
+        let count = ordered.count
+        let hPad: CGFloat      = 10
+        let colSpacing: CGFloat = 10
+        let rowSpacing: CGFloat = 28
+        let maxTile: CGFloat   = 120
+
+        let availableW = size.width - hPad * 2
+        // Vertical band: from just below the farmhouse area down to above the tab bar.
+        let gridTop    = size.height * 0.60
+        let gridBottom = bottomSafeAreaInset + 20
+        let availableH = max(80, gridTop - gridBottom)
+
+        // Find the column count that maximises tile size within the available rect.
+        var bestTile: CGFloat = 0
+        var bestCols = 1
+        for cols in 1...count {
+            let rows  = Int(ceil(Double(count) / Double(cols)))
+            let tileW = (availableW - CGFloat(cols - 1) * colSpacing) / CGFloat(cols)
+            let tileH = (availableH - CGFloat(rows - 1) * rowSpacing) / CGFloat(rows)
+            let tile  = min(tileW, tileH, maxTile)
+            if tile > bestTile { bestTile = tile; bestCols = cols }
+        }
+
+        let cols = bestCols
+        let rows = Int(ceil(Double(count) / Double(cols)))
+        let tile = max(40, bestTile)
+
+        for node in ordered { node.resize(to: tile) }
+
+        let totalW   = CGFloat(cols) * tile + CGFloat(cols - 1) * colSpacing
+        let totalH   = CGFloat(rows) * tile + CGFloat(rows - 1) * rowSpacing
+        let originX  = (size.width - totalW) / 2 + tile / 2
+        let bandMidY = gridBottom + availableH / 2
+        let originY  = bandMidY + (totalH - tile) / 2
 
         for (index, node) in ordered.enumerated() {
+            let col    = index % cols
+            let row    = index / cols
             let target = CGPoint(
-                x: startX + CGFloat(index) * (tile + spacing),
-                y: centerY
+                x: originX + CGFloat(col) * (tile + colSpacing),
+                y: originY - CGFloat(row) * (tile + rowSpacing)
             )
-            // Animate gently on re-layout so adding a plot feels responsive
-            // rather than jumpy. New nodes (just added this frame) snap in
-            // place via the .move action's short duration.
             node.removeAction(forKey: "layout")
             if UIAccessibility.isReduceMotionEnabled {
                 node.position = target
