@@ -1,8 +1,18 @@
 import SwiftUI
+import SwiftData
 
 struct AddTaskSheet: View {
 
     @Environment(\.dismiss) private var dismiss
+
+    @Query(sort: [SortDescriptor(\DBModel.Goal.title)])
+    private var allGoals: [DBModel.Goal]
+
+    /// Active/paused goals shown in the link picker. Filtered in-memory since
+    /// GoalStatus is a Codable enum (no raw Int column for a SwiftData predicate).
+    private var linkableGoals: [DBModel.Goal] {
+        allGoals.filter { $0.status == .active || $0.status == .paused }
+    }
 
     @State private var draft: TaskDraft
     @State private var includeDueDate: Bool
@@ -25,7 +35,8 @@ struct AddTaskSheet: View {
                 dueDate: existing.dueDate,
                 priority: existing.priority,
                 tags: existing.tags,
-                recurrence: existing.recurrence
+                recurrence: existing.recurrence,
+                linkedGoalID: existing.goals?.first?.id
             ))
             _includeDueDate = State(initialValue: existing.dueDate != nil)
             isEditing = true
@@ -82,6 +93,16 @@ struct AddTaskSheet: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                }
+                if !linkableGoals.isEmpty {
+                    Section("Goal") {
+                        Picker("Link to goal", selection: $draft.linkedGoalID) {
+                            Text("None").tag(UUID?.none)
+                            ForEach(linkableGoals) { goal in
+                                Text(goal.title).tag(UUID?.some(goal.id))
+                            }
+                        }
+                    }
                 }
             }
             .navigationTitle(isEditing ? "Edit Task" : "New Task")

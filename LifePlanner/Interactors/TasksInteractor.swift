@@ -8,6 +8,8 @@ struct TaskDraft {
     var priority: TaskPriority = .normal
     var tags: [String] = []
     var recurrence: TaskRecurrence? = nil
+    /// ID of the single goal this task is linked to, or nil for unlinked.
+    var linkedGoalID: UUID? = nil
 }
 
 protocol TasksInteractor {
@@ -48,6 +50,7 @@ final class RealTasksInteractor: TasksInteractor {
             recurrence: draft.recurrence
         )
         context.insert(task)
+        applyGoalLink(draft.linkedGoalID, to: task, in: context)
         syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: task.isDone)
         Swift.Task.detached { await SpotlightIndexer.shared.index(task: task) }
         quests.refreshTodaysCommonFieldSlots(in: context)
@@ -64,6 +67,7 @@ final class RealTasksInteractor: TasksInteractor {
         task.tags = draft.tags
         task.recurrence = draft.recurrence
         task.updatedAt = Date()
+        applyGoalLink(draft.linkedGoalID, to: task, in: context)
         syncReminder(id: task.id, title: task.title, dueDate: task.dueDate, isDone: task.isDone)
         Swift.Task.detached { await SpotlightIndexer.shared.index(task: task) }
         context.saveQuietly()
@@ -98,6 +102,20 @@ final class RealTasksInteractor: TasksInteractor {
         Swift.Task.detached { await SpotlightIndexer.shared.remove(taskID: id) }
         context.delete(task)
         context.saveQuietly()
+    }
+
+    /// Sets `task.goals` to the single goal matching `goalID`, or clears it when
+    /// `goalID` is nil. The many-to-many inverse on `Goal.linkedTasks` is updated
+    /// automatically by SwiftData.
+    private func applyGoalLink(_ goalID: UUID?, to task: DBModel.Task, in context: ModelContext) {
+        guard let goalID else {
+            task.goals = []
+            return
+        }
+        let descriptor = FetchDescriptor<DBModel.Goal>(predicate: #Predicate { $0.id == goalID })
+        if let goal = try? context.fetch(descriptor).first {
+            task.goals = [goal]
+        }
     }
 
     private func spawnNextOccurrence(of task: DBModel.Task, recurrence: TaskRecurrence, from dueDate: Date, in context: ModelContext) {
