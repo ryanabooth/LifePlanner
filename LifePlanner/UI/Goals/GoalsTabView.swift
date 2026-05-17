@@ -10,16 +10,20 @@ struct GoalsTabView: View {
     private var goals: [DBModel.Goal]
 
     @State private var showAdd = false
+    @State private var showTemplatePicker = false
 
     var body: some View {
         NavigationStack {
             Group {
                 if goals.isEmpty {
-                    ContentUnavailableView(
-                        "No goals yet",
-                        systemImage: "target",
-                        description: Text("Goals tie tasks and habits together. Tap + to add one.")
-                    )
+                    ContentUnavailableView {
+                        Label("No goals yet", systemImage: "target")
+                    } description: {
+                        Text("Goals tie tasks and habits together. Tap + to add one, or start from a template.")
+                    } actions: {
+                        Button("Add from Template") { showTemplatePicker = true }
+                            .buttonStyle(.bordered)
+                    }
                 } else {
                     List {
                         ForEach(GoalStatus.allCases) { status in
@@ -42,8 +46,13 @@ struct GoalsTabView: View {
             .navigationTitle("Goals")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showAdd = true
+                    Menu {
+                        Button { showAdd = true } label: {
+                            Label("New Goal", systemImage: "plus")
+                        }
+                        Button { showTemplatePicker = true } label: {
+                            Label("Add from Template", systemImage: "doc.text")
+                        }
                     } label: {
                         Image(systemName: "plus")
                     }
@@ -53,6 +62,9 @@ struct GoalsTabView: View {
                 AddGoalSheet { draft in
                     injected.interactors.goals.add(draft, in: modelContext)
                 }
+            }
+            .sheet(isPresented: $showTemplatePicker) {
+                GoalTemplatePickerSheet()
             }
         }
     }

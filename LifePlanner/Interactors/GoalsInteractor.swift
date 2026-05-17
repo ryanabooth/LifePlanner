@@ -1,7 +1,9 @@
 import Foundation
 import SwiftData
 
-struct GoalDraft {
+struct GoalDraft: Identifiable {
+    /// Stable identity used when presenting the draft as a sheet item.
+    let id: UUID = UUID()
     var title: String = ""
     var why: String? = nil
     var targetDate: Date? = nil
@@ -11,6 +13,9 @@ struct GoalDraft {
     var metricUnit: String? = nil
     /// 0 = open-ended metric (no completion target).
     var metricTarget: Double = 0
+    /// Sub-goal titles pre-populated from a template; created as `SubGoal` rows
+    /// when the goal is saved. Empty for manually-created goals.
+    var subGoalTitles: [String] = []
 }
 
 protocol GoalsInteractor {
@@ -55,6 +60,11 @@ final class RealGoalsInteractor: GoalsInteractor {
         // Allocate a farm plot. If at capacity, silently skip — Step 7's UI will
         // surface the over-capacity error and prompt for an upgrade.
         try? farm.bindPlot(to: goal, in: context)
+        // Create template sub-goals if the draft carries any.
+        for (index, subTitle) in draft.subGoalTitles.enumerated() {
+            let sub = DBModel.SubGoal(title: subTitle, order: index, goal: goal)
+            context.insert(sub)
+        }
         context.saveQuietly()
     }
 
