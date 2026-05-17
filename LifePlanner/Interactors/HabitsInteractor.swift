@@ -8,6 +8,8 @@ struct HabitDraft {
     /// Per-week target for `.weekly` cadence. Ignored when `frequency == .daily`.
     var weeklyTarget: Int = 3
     var reminderTime: Date? = nil
+    /// ID of the single goal this habit is linked to, or nil for unlinked.
+    var linkedGoalID: UUID? = nil
 }
 
 protocol HabitsInteractor {
@@ -66,6 +68,7 @@ final class RealHabitsInteractor: HabitsInteractor {
             reminderTime: draft.reminderTime
         )
         context.insert(habit)
+        applyGoalLink(draft.linkedGoalID, to: habit, in: context)
         syncReminder(for: habit)
         quests.refreshTodaysCommonFieldSlots(in: context)
         context.saveQuietly()
@@ -80,6 +83,7 @@ final class RealHabitsInteractor: HabitsInteractor {
         habit.weeklyTarget = max(1, draft.weeklyTarget)
         habit.reminderTime = draft.reminderTime
         habit.updatedAt = Date()
+        applyGoalLink(draft.linkedGoalID, to: habit, in: context)
         syncReminder(for: habit)
         context.saveQuietly()
     }
@@ -192,6 +196,20 @@ final class RealHabitsInteractor: HabitsInteractor {
         let title = habit.title
         Task.detached { [scheduler] in
             await scheduler.scheduleStreakMilestone(habitTitle: title, streak: milestone, bonus: bonus)
+        }
+    }
+
+    /// Sets `habit.goals` to the single goal matching `goalID`, or clears it when
+    /// `goalID` is nil. The many-to-many inverse on `Goal.linkedHabits` is updated
+    /// automatically by SwiftData.
+    private func applyGoalLink(_ goalID: UUID?, to habit: DBModel.Habit, in context: ModelContext) {
+        guard let goalID else {
+            habit.goals = []
+            return
+        }
+        let descriptor = FetchDescriptor<DBModel.Goal>(predicate: #Predicate { $0.id == goalID })
+        if let goal = try? context.fetch(descriptor).first {
+            habit.goals = [goal]
         }
     }
 

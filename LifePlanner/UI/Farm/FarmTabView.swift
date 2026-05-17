@@ -51,7 +51,7 @@ struct FarmTabView: View {
                     .ignoresSafeArea()
                     .onAppear {
                         scene.topSafeAreaInset    = proxy.safeAreaInsets.top + 12
-                        scene.bottomSafeAreaInset = proxy.safeAreaInsets.bottom + 49
+                        scene.bottomSafeAreaInset = proxy.safeAreaInsets.bottom + 20
                         pushSnapshot()
                         pushCosmeticSnapshot()
                     }
@@ -61,7 +61,7 @@ struct FarmTabView: View {
                         scene.topSafeAreaInset = newInset + 12
                     }
                     .onChange(of: proxy.safeAreaInsets.bottom) { _, newInset in
-                        scene.bottomSafeAreaInset = newInset + 49
+                        scene.bottomSafeAreaInset = newInset + 20
                     }
                     .onReceive(scene.tappedPlotID) { id in
                         presentedPlot = PresentedPlot(id: id)
@@ -82,7 +82,7 @@ struct FarmTabView: View {
             .overlay(alignment: .bottomTrailing) {
                 addFAB
                     .padding(.trailing, 20)
-                    .padding(.bottom, proxy.safeAreaInsets.bottom + 20)
+                    .padding(.bottom, proxy.safeAreaInsets.bottom + 8)
             }
         }
         .sheet(item: $presentedPlot) { item in
@@ -118,6 +118,7 @@ struct FarmTabView: View {
         .sheet(isPresented: $showWeatherExplainer) {
             WeatherExplainerSheet(event: activeWeather)
         }
+        .toolbar(.hidden, for: .tabBar)
     }
 
     private var overlayButtons: some View {

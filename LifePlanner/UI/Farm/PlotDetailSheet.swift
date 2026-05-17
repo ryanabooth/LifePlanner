@@ -17,6 +17,8 @@ struct PlotDetailSheet: View {
     @Query private var plots: [DBModel.FarmPlot]
     @Query private var weatherEvents: [DBModel.WeatherEvent]
 
+    @State private var showEditGoal = false
+
     private var activeWeather: DBModel.WeatherEvent? {
         let now = Date()
         return weatherEvents.first { $0.startedAt <= now && $0.expiresAt > now }
@@ -49,8 +51,20 @@ struct PlotDetailSheet: View {
             .navigationTitle(plot?.goal?.title ?? "Common Field")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                if plot?.goal != nil {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button("Edit Goal") { showEditGoal = true }
+                    }
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
+                }
+            }
+            .sheet(isPresented: $showEditGoal) {
+                if let goal = plot?.goal {
+                    AddGoalSheet(existing: goal) { draft in
+                        injected.interactors.goals.update(goal, with: draft, in: modelContext)
+                    }
                 }
             }
         }
