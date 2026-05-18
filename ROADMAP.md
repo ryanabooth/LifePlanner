@@ -114,6 +114,17 @@ Game-y systems that layer on top of the productivity core to keep long-term user
 - [x] **Achievements.** Meta-rewards for milestones: "Logged 100 habits", "First 30-day streak", "Owned 5 cosmetics", "Reached year 1 of farming", "First plot revived from dead". Surfaced via a trophy-shelf view + immediate local notification on first unlock. New `DBModel.Achievement { slug, unlockedAt }`. Catalog defined in code; rule evaluation hooks into existing toggle/claim paths.
 - [x] **Goal templates.** Pre-built goal templates ("Run a 5K", "Read 12 books", "Save $5K") so new users get a fast start without staring at an empty Goals tab. Static catalog + an "Add from template" button on the empty-state view. No schema change.
 - [x] **Tool upgrades.** Buy-with-gold farm tools that boost contribution magnitudes (better watering can = +5 to habit contribution; sharper hoe = +5 task contribution). New `DBModel.OwnedTool` mirroring `OwnedCosmetic`. Schema bump.
+- [ ] **Farm level & XP.** Cumulative XP counter on `FarmState` earned from plot maturations, quest claims, and streak milestones. XP thresholds unlock new `FarmElementType` slots (e.g. level 5 unlocks a new crop variant), cosmetic rewards, or farm expansion perks. Surfaces as a level badge + XP bar in the farm HUD. Schema bump.
+- [ ] **Visitors & building materials.** Periodic visitor NPC events that drop rare building materials (lumber, stone, seeds). Materials unlock additional plot types beyond the base four (e.g. greenhouse, orchard, pond). New `DBModel.BuildingMaterial` inventory + visitor event rolling similar to weather. Schema bump.
+
+## Reported bugs & quick fixes
+
+Tracked from TestFlight feedback. Ship as hotfixes on `fix/*` branches; no phase dependency.
+
+- [ ] **Bug: duplicated notifications for tasks and habits.** Completing a task or habit appears to fire the notification more than once. Audit `TasksInteractor.toggleDone` and `HabitsInteractor.toggleDone` — check whether `NotificationScheduler` is being called at multiple call sites (interactor + view) or whether the `UNUserNotificationCenter` request identifier is non-unique, causing duplicate delivery.
+- [ ] **Bug: navbar missing in some views.** Tab bar disappears in screens reachable from the Farm tab (other than the plot detail fix already shipped). Audit every `.toolbar(.hidden, for: .tabBar)` usage and every `NavigationStack` push path to ensure `.toolbar(.visible, for: .tabBar)` is set where needed.
+- [ ] **Fix: "Edit Goal" button label.** The button in `PlotDetailView` reads "Edit Goal" but should read just "Edit" to match iOS convention for toolbar leading buttons.
+- [ ] **Feature: unclaimed quest badge.** Show a badge count on the quest-log scroll button in `FarmTabView` (and on the Farm tab icon in the tab bar / sidebar) when there are claimable quests. Query `DBModel.Quest` for `.active` quests where `progress >= progressTarget` or kind is non-progress and state is `.active` past completion.
 
 ## Phase 9 — App Store launch prep
 
