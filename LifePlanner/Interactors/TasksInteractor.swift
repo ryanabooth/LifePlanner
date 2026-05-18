@@ -25,17 +25,20 @@ final class RealTasksInteractor: TasksInteractor {
     private let scheduler: NotificationScheduler
     private let farm: FarmInteractor
     private let quests: QuestInteractor
+    private let achievements: AchievementInteractor
 
     init(
         calendar: Calendar = .current,
         scheduler: NotificationScheduler = RealNotificationScheduler(),
         farm: FarmInteractor = StubFarmInteractor(),
-        quests: QuestInteractor = StubQuestInteractor()
+        quests: QuestInteractor = StubQuestInteractor(),
+        achievements: AchievementInteractor = StubAchievementInteractor()
     ) {
         self.calendar = calendar
         self.scheduler = scheduler
         self.farm = farm
         self.quests = quests
+        self.achievements = achievements
     }
 
     func add(_ draft: TaskDraft, in context: ModelContext) {
@@ -84,6 +87,7 @@ final class RealTasksInteractor: TasksInteractor {
             if task.goals?.isEmpty != false { quests.notifyCommonFieldTend(in: context) }
             quests.checkFarmQuests(in: context)
             quests.trackMatureTransitions(count: matured, in: context)
+            achievements.checkAll(in: context)
             let id = task.id
             Swift.Task.detached { await SpotlightIndexer.shared.remove(taskID: id) }
             if let recurrence = task.recurrence, let dueDate = task.dueDate {

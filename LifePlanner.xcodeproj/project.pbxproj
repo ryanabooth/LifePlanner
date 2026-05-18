@@ -66,6 +66,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Repositories/Database/ModelContainer.swift,
+				Repositories/Models/Achievement.swift,
 				Repositories/Models/AppSchema.swift,
 				Repositories/Models/FarmPlot.swift,
 				Repositories/Models/FarmState.swift,

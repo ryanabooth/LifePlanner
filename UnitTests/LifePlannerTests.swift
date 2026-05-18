@@ -38,6 +38,12 @@ actor FakeNotificationScheduler: NotificationScheduler {
     func scheduleStreakMilestone(habitTitle: String, streak: Int, bonus: Int) async {
         streakMilestones.append((habitTitle, streak, bonus))
     }
+
+    private(set) var unlockedAchievements: [(emoji: String, title: String)] = []
+
+    func scheduleAchievementUnlocked(emoji: String, title: String) async {
+        unlockedAchievements.append((emoji, title))
+    }
 }
 
 extension FakeNotificationScheduler {
@@ -213,7 +219,7 @@ final class LifePlannerTests: XCTestCase {
         let container = try ModelContainer(
             for: DBModel.FarmState.self, DBModel.FarmPlot.self, DBModel.Goal.self,
                 DBModel.Task.self, DBModel.Habit.self, DBModel.HabitLogEntry.self,
-                DBModel.Quest.self, DBModel.WeatherEvent.self,
+                DBModel.Quest.self, DBModel.WeatherEvent.self, DBModel.Achievement.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         return ModelContext(container)
@@ -1418,5 +1424,117 @@ final class LifePlannerTests: XCTestCase {
         let baseAmount = FarmTuning.taskBaseContribution + (FarmTuning.taskPriorityBonus[.normal] ?? 0)
         let expected = max(1, Int((Double(baseAmount) * 0.5).rounded()))
         XCTAssertEqual(plot.health, min(100, healthBefore + expected))
+    }
+
+    // MARK: - Achievement tests
+
+    @MainActor
+    func test_achievement_firstHarvestUnlockedOnMature() throws {
+        let context = try makeFarmContext()
+        let farm = RealFarmInteractor()
+        farm.bootstrap(in: context)
+        let economy = RealEconomyInteractor()
+        economy.credit(200, reason: "test-seed", in: context)
+
+        let achievements = RealAchievementInteractor()
+
+        // No achievements yet.
+        let before = try context.fetch(FetchDescriptor<DBModel.Achievement>())
+        XCTAssertTrue(before.isEmpty)
+
+        // Manually set totalMatureTransitions to 1 and run checkAll.
+        let state = try XCTUnwrap(context.fetch(FetchDescriptor<DBModel.FarmState>()).first)
+        state.totalMatureTransitions = 1
+        achievements.checkAll(in: context)
+
+        let after = try context.fetch(FetchDescriptor<DBModel.Achievement>())
+        XCTAssertTrue(after.contains { $0.slug == "first_harvest" })
+    }
+
+    @MainActor
+    func test_achievement_idempotent() throws {
+        let context = try makeFarmContext()
+        let farm = RealFarmInteractor()
+        farm.bootstrap(in: context)
+
+        let achievements = RealAchievementInteractor()
+
+        let state = try XCTUnwrap(context.fetch(FetchDescriptor<DBModel.FarmState>()).first)
+        state.totalMatureTransitions = 10
+
+        // checkAll twice — still only one row per slug.
+        achievements.checkAll(in: context)
+        achievements.checkAll(in: context)
+
+        let rows = try context.fetch(FetchDescriptor<DBModel.Achievement>())
+        let harvestSlugs = rows.filter { $0.slug == "first_harvest" }
+        XCTAssertEqual(harvestSlugs.count, 1, "Idempotent — no duplicate achievements")
+    }
+
+    @MainActor
+    func test_achievement_goldEarnedTriggersPennyPincher() throws {
+        let context = try makeFarmContext()
+        let farm = RealFarmInteractor()
+        farm.bootstrap(in: context)
+        let economy = RealEconomyInteractor()
+
+        // Credit exactly 500 gold — should trigger penny_pincher (totalGoldEarned tracks it).
+        economy.credit(500, reason: "test", in: context)
+
+        let achievements = RealAchievementInteractor()
+        achievements.checkAll(in: context)
+
+        let rows = try context.fetch(FetchDescriptor<DBModel.Achievement>())
+        XCTAssertTrue(rows.contains { $0.slug == "penny_pincher" })
+        XCTAssertFalse(rows.contains { $0.slug == "gold_rush" }, "5k threshold not met")
+    }
+
+    @MainActor
+    func test_achievement_replantTriggersGreenThumb() throws {
+        let context = try makeFarmContext()
+        let farm = RealFarmInteractor()
+        farm.bootstrap(in: context)
+        let economy = RealEconomyInteractor()
+
+        // Seed enough gold for the replant cost.
+        economy.credit(200, reason: "test", in: context)
+
+        // Bind a goal + plot, then kill it.
+        let goalInteractor = RealGoalsInteractor(farm: farm)
+        goalInteractor.add(GoalDraft(title: "Exercise"), in: context)
+        let goal = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Goal>()).first)
+        let plot = try XCTUnwrap(goal.plot)
+        plot.state = .dead
+        context.saveQuietly()
+
+        let achievements = RealAchievementInteractor()
+        let farmWithAchievements = RealFarmInteractor(achievements: achievements)
+
+        try farmWithAchievements.replant(plot, in: context)
+
+        let rows = try context.fetch(FetchDescriptor<DBModel.Achievement>())
+        XCTAssertTrue(rows.contains { $0.slug == "green_thumb" })
+        XCTAssertEqual(plot.state, .growing)
+    }
+
+    @MainActor
+    func test_achievement_weekStrongUnlockedOnSevenDayStreak() throws {
+        let context = try makeFarmContext()
+        let farm = RealFarmInteractor()
+        farm.bootstrap(in: context)
+
+        let achievements = RealAchievementInteractor()
+
+        // Insert a habit with currentStreak = 7.
+        let habit = DBModel.Habit(title: "Meditate", frequency: .daily)
+        context.insert(habit)
+        habit.currentStreak = 7
+        context.saveQuietly()
+
+        achievements.checkAll(in: context)
+
+        let rows = try context.fetch(FetchDescriptor<DBModel.Achievement>())
+        XCTAssertTrue(rows.contains { $0.slug == "week_strong" })
+        XCTAssertFalse(rows.contains { $0.slug == "month_strong" }, "30-day threshold not met")
     }
 }

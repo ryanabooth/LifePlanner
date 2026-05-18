@@ -24,6 +24,7 @@ final class RealEconomyInteractor: EconomyInteractor {
     func credit(_ amount: Int, reason: String, in context: ModelContext) {
         guard amount > 0, let state = farmState(in: context) else { return }
         state.gold += amount
+        state.totalGoldEarned += amount
         state.updatedAt = Date()
     }
 
@@ -34,6 +35,7 @@ final class RealEconomyInteractor: EconomyInteractor {
             throw EconomyError.insufficientGold(have: state.gold, need: amount)
         }
         state.gold -= amount
+        state.totalGoldSpent += amount
         state.updatedAt = Date()
     }
 
