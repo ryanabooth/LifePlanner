@@ -1052,16 +1052,11 @@ final class LifePlannerTests: XCTestCase {
         let cal = Calendar.current
         let comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
         let weekStart = try XCTUnwrap(cal.date(from: comps))
-        // Log two entries earlier this week so target is met; logging today is unnecessary.
+        // Log two entries on Monday and Tuesday of this week — always in-week
+        // regardless of which day the test runs. The habit is excluded from the
+        // quest pool because isWeekComplete returns true (2 entries ≥ target 2).
         habits.toggleDone(habit, on: weekStart, in: context)
-        let dayBeforeToday = cal.date(byAdding: .day, value: -1, to: Date()) ?? Date()
-        if cal.isDate(dayBeforeToday, equalTo: Date(), toGranularity: .day) {
-            // edge case: weekStart == today on Mondays. Use day-after-weekStart as
-            // second log instead so target is still met without using today.
-            habits.toggleDone(habit, on: cal.date(byAdding: .day, value: 1, to: weekStart)!, in: context)
-        } else {
-            habits.toggleDone(habit, on: dayBeforeToday, in: context)
-        }
+        habits.toggleDone(habit, on: cal.date(byAdding: .day, value: 1, to: weekStart)!, in: context)
 
         // Roll today's quests — weekly habit with target already met must NOT be picked.
         let rolled = quests.rollDaily(on: Date(), in: context)
