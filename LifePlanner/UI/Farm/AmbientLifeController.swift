@@ -253,7 +253,11 @@ final class AmbientLifeController {
         path.addLine(to: CGPoint(x: 0, y: -2))
         path.addLine(to: CGPoint(x: 6, y: 3))
         let shape = SKShapeNode(path: path)
-        shape.strokeColor = UIColor(white: 0.2, alpha: 0.7)
+        shape.strokeColor = UIColor { trait in
+            trait.userInterfaceStyle == .dark
+                ? UIColor(white: 0.85, alpha: 0.7)
+                : UIColor(white: 0.2, alpha: 0.7)
+        }
         shape.lineWidth = 2
         shape.lineCap = .round
         shape.lineJoin = .round

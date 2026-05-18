@@ -32,21 +32,33 @@ final class FarmhouseNode: SKNode {
     private func buildBase() {
         // Walls
         let walls = SKShapeNode(rect: CGRect(x: -30, y: 0, width: 60, height: 40))
-        walls.fillColor = UIColor(red: 0.85, green: 0.80, blue: 0.72, alpha: 1)
+        walls.fillColor = UIColor { trait in
+            trait.userInterfaceStyle == .dark
+                ? UIColor(red: 0.30, green: 0.27, blue: 0.22, alpha: 1)
+                : UIColor(red: 0.85, green: 0.80, blue: 0.72, alpha: 1)
+        }
         walls.strokeColor = UIColor(white: 0.5, alpha: 0.4)
         walls.lineWidth = 1
         addChild(walls)
 
         // Door
         let door = SKShapeNode(rect: CGRect(x: -8, y: 0, width: 16, height: 24))
-        door.fillColor = UIColor(red: 0.45, green: 0.25, blue: 0.10, alpha: 1)
+        door.fillColor = UIColor { trait in
+            trait.userInterfaceStyle == .dark
+                ? UIColor(red: 0.25, green: 0.13, blue: 0.05, alpha: 1)
+                : UIColor(red: 0.45, green: 0.25, blue: 0.10, alpha: 1)
+        }
         door.strokeColor = .clear
         addChild(door)
 
         // Windows
         for x: CGFloat in [-24, 12] {
             let win = SKShapeNode(rect: CGRect(x: x, y: 16, width: 12, height: 12))
-            win.fillColor = UIColor(red: 0.60, green: 0.82, blue: 0.95, alpha: 0.8)
+            win.fillColor = UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.20, green: 0.35, blue: 0.55, alpha: 0.8)
+                    : UIColor(red: 0.60, green: 0.82, blue: 0.95, alpha: 0.8)
+            }
             win.strokeColor = UIColor(white: 0.5, alpha: 0.5)
             win.lineWidth = 1
             addChild(win)
@@ -95,11 +107,23 @@ final class FarmhouseNode: SKNode {
     private func roofColor(for slug: String?) -> UIColor {
         switch slug {
         case "house_red_roof", "house_flower_box":
-            return UIColor(red: 0.72, green: 0.18, blue: 0.12, alpha: 1)
+            return UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.50, green: 0.10, blue: 0.08, alpha: 1)
+                    : UIColor(red: 0.72, green: 0.18, blue: 0.12, alpha: 1)
+            }
         case "house_blue_roof":
-            return UIColor(red: 0.20, green: 0.45, blue: 0.78, alpha: 1)
+            return UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.12, green: 0.28, blue: 0.55, alpha: 1)
+                    : UIColor(red: 0.20, green: 0.45, blue: 0.78, alpha: 1)
+            }
         default:
-            return UIColor(white: 0.55, alpha: 1)
+            return UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(white: 0.35, alpha: 1)
+                    : UIColor(white: 0.55, alpha: 1)
+            }
         }
     }
 }
