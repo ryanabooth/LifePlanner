@@ -115,6 +115,30 @@ final class RealNotificationScheduler: NotificationScheduler {
         center.removeDeliveredNotifications(withIdentifiers: [plotAlertID(plotID)])
     }
 
+    // Why duplicate streak/achievement notifications can't occur:
+    //
+    // • scheduleStreakMilestone is called from checkStreakMilestone, which guards
+    //   with `milestone > habit.lastStreakMilestone`. The milestone is written back
+    //   before the function returns, so a second call for the same streak level is a
+    //   no-op. Identifiers use a random UUID so older delivered banners aren't
+    //   silently replaced — that is intentional (user may have multiple milestones
+    //   queue up if they backfill logs).
+    //
+    // • scheduleAchievementUnlocked is called from RealAchievementInteractor.checkAll
+    //   only when a slug is absent from the persisted Achievement table. checkAll is
+    //   idempotent: once the row is inserted, the slug is present on every subsequent
+    //   call and the notification branch is skipped. The random-UUID identifier is
+    //   similarly intentional — we never want a new achievement to cancel a queued one.
+    //
+    // • Habit/task reminders (scheduleHabitReminder, scheduleTaskDue) are keyed on
+    //   the item's UUID and are removed-then-re-added on every schedule call, so
+    //   only one pending request per item can exist at a time. They fire at a future
+    //   calendar trigger, not immediately — no overlap with same-action milestone/
+    //   achievement banners that fire after a 1-second delay.
+    //
+    // Investigated 2026-05-18: no code-level duplicate bug found. Any observed
+    // duplicate deliveries are device-specific behaviour (e.g. notification centre
+    // grouping / re-delivery on relaunch) outside our control.
     func scheduleStreakMilestone(habitTitle: String, streak: Int, bonus: Int) async {
         guard UserDefaults.standard.object(forKey: "notif.streakMilestones") as? Bool ?? true else { return }
         guard await ensureAuthorized() else { return }

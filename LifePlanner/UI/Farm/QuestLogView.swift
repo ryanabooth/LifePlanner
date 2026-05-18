@@ -8,7 +8,6 @@ struct QuestLogView: View {
 
     @Environment(\.injected) private var injected: DIContainer
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
 
     @Query(sort: [SortDescriptor(\DBModel.Quest.slot)])
     private var allQuests: [DBModel.Quest]
@@ -37,58 +36,51 @@ struct QuestLogView: View {
     private var gold: Int { farmStates.first?.gold ?? 0 }
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    HStack {
-                        Text("🪙 Gold")
-                        Spacer()
-                        Text("\(gold)").bold()
-                    }
-                }
-
-                Section {
-                    if todaysQuests.isEmpty {
-                        Text("No quests rolled yet — relaunch the app to roll today's batch.")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(todaysQuests) { quest in
-                            QuestRow(
-                                quest: quest,
-                                taskTitle: lookupTaskTitle(for: quest),
-                                habitTitle: lookupHabitTitle(for: quest),
-                                canAfford: gold >= QuestTuning.rerollCost(for: quest.rerollCount),
-                                onReroll: { try? injected.interactors.quests.reroll(quest, in: modelContext) }
-                            )
-                        }
-                    }
-                } header: {
-                    Text("Today's Quests")
-                } footer: {
-                    Text("Completing the underlying task or habit auto-claims the matching quest. Re-roll a slot to swap it for a different ask — cost grows each time.")
-                }
-
-                Section {
-                    if let wq = weeklyQuest {
-                        WeeklyQuestRow(quest: wq)
-                    } else {
-                        Text("Weekly quest not rolled yet — open the app tomorrow.")
-                            .foregroundStyle(.secondary)
-                    }
-                } header: {
-                    Text("This Week")
-                } footer: {
-                    Text("Push \(QuestTuning.weeklyHarvestTarget) plots to mature this week to claim the bonus reward.")
+        List {
+            Section {
+                HStack {
+                    Text("🪙 Gold")
+                    Spacer()
+                    Text("\(gold)").bold()
                 }
             }
-            .navigationTitle("Quests")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+
+            Section {
+                if todaysQuests.isEmpty {
+                    Text("No quests rolled yet — relaunch the app to roll today's batch.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(todaysQuests) { quest in
+                        QuestRow(
+                            quest: quest,
+                            taskTitle: lookupTaskTitle(for: quest),
+                            habitTitle: lookupHabitTitle(for: quest),
+                            canAfford: gold >= QuestTuning.rerollCost(for: quest.rerollCount),
+                            onReroll: { try? injected.interactors.quests.reroll(quest, in: modelContext) }
+                        )
+                    }
                 }
+            } header: {
+                Text("Today's Quests")
+            } footer: {
+                Text("Completing the underlying task or habit auto-claims the matching quest. Re-roll a slot to swap it for a different ask — cost grows each time.")
+            }
+
+            Section {
+                if let wq = weeklyQuest {
+                    WeeklyQuestRow(quest: wq)
+                } else {
+                    Text("Weekly quest not rolled yet — open the app tomorrow.")
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("This Week")
+            } footer: {
+                Text("Push \(QuestTuning.weeklyHarvestTarget) plots to mature this week to claim the bonus reward.")
             }
         }
+        .navigationTitle("Quests")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     // MARK: - Lookup helpers

@@ -157,7 +157,7 @@ struct AddGoalSheet: View {
                 Text("You're using \(usedPlots) of \(plotCapacity) plots. Expand the farm to add another goal.")
             }
             .sheet(isPresented: $showCapacitySheet) {
-                CapacityUpgradeSheet()
+                NavigationStack { CapacityUpgradeSheet() }
             }
         }
     }

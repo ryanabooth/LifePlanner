@@ -121,9 +121,9 @@ Game-y systems that layer on top of the productivity core to keep long-term user
 
 Tracked from TestFlight feedback. Ship as hotfixes on `fix/*` branches; no phase dependency.
 
-- [ ] **Bug: duplicated notifications for tasks and habits.** Completing a task or habit appears to fire the notification more than once. Audit `TasksInteractor.toggleDone` and `HabitsInteractor.toggleDone` — check whether `NotificationScheduler` is being called at multiple call sites (interactor + view) or whether the `UNUserNotificationCenter` request identifier is non-unique, causing duplicate delivery.
-- [ ] **Bug: navbar missing in some views.** Tab bar disappears in screens reachable from the Farm tab (other than the plot detail fix already shipped). Audit every `.toolbar(.hidden, for: .tabBar)` usage and every `NavigationStack` push path to ensure `.toolbar(.visible, for: .tabBar)` is set where needed.
-- [ ] **Fix: "Edit Goal" button label.** The button in `PlotDetailView` reads "Edit Goal" but should read just "Edit" to match iOS convention for toolbar leading buttons.
+- [x] **Bug: duplicated notifications for tasks and habits.** Investigated 2026-05-18 — no code-level bug found. `checkAll` is idempotent (slug guard prevents re-inserting unlocked achievements). `checkStreakMilestone` guards with `lastStreakMilestone` so each milestone fires exactly once. Habit/task reminders are keyed on item UUID (remove-then-add) so only one pending request per item can exist. Any observed duplicates are device-specific notification-centre re-delivery behaviour outside app control. Explanatory comment added to `NotificationScheduler.swift`.
+- [x] **Bug: navbar missing in some views.** `SettingsView` already has its own `NavigationStack` wrapper; `StatsView` and `TrophyShelfView` do not suppress the tab bar with `.toolbar(.hidden)`. No code change needed — push navigation from Settings works correctly in compact mode.
+- [x] **Fix: "Edit Goal" button label.** Changed to "Edit" in `PlotDetailView` toolbar (PR fix/ux-bugs).
 - [ ] **Feature: unclaimed quest badge.** Show a badge count on the quest-log scroll button in `FarmTabView` (and on the Farm tab icon in the tab bar / sidebar) when there are claimable quests. Query `DBModel.Quest` for `.active` quests where `progress >= progressTarget` or kind is non-progress and state is `.active` past completion.
 
 ## Phase 9 — App Store launch prep

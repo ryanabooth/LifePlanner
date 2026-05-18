@@ -8,7 +8,6 @@ struct CapacityUpgradeSheet: View {
 
     @Environment(\.injected) private var injected: DIContainer
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
 
     @Query private var farmStates: [DBModel.FarmState]
     @Query private var plots: [DBModel.FarmPlot]
@@ -21,40 +20,33 @@ struct CapacityUpgradeSheet: View {
     private var canAfford: Bool { (state?.gold ?? 0) >= upgradeCost }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    LabeledContent("Capacity") {
-                        Text("\(usedPlots) / \(state?.plotCapacity ?? 0)")
-                    }
-                    LabeledContent("Gold") {
-                        Text("🪙 \(state?.gold ?? 0)")
-                    }
+        Form {
+            Section {
+                LabeledContent("Capacity") {
+                    Text("\(usedPlots) / \(state?.plotCapacity ?? 0)")
                 }
-
-                Section {
-                    Button {
-                        try? injected.interactors.farm.purchaseCapacity(in: modelContext)
-                        SoundPlayer.shared.play(.purchase)
-                        HapticPlayer.shared.success()
-                    } label: {
-                        Label(
-                            "Buy 1 plot (–\(upgradeCost) gold)",
-                            systemImage: "plus.square.dashed"
-                        )
-                    }
-                    .disabled(!canAfford)
-                } footer: {
-                    Text("Each upgrade lets you bind one more Goal to its own farm plot. Cost grows with each upgrade.")
+                LabeledContent("Gold") {
+                    Text("🪙 \(state?.gold ?? 0)")
                 }
             }
-            .navigationTitle("Expand Farm")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+
+            Section {
+                Button {
+                    try? injected.interactors.farm.purchaseCapacity(in: modelContext)
+                    SoundPlayer.shared.play(.purchase)
+                    HapticPlayer.shared.success()
+                } label: {
+                    Label(
+                        "Buy 1 plot (–\(upgradeCost) gold)",
+                        systemImage: "plus.square.dashed"
+                    )
                 }
+                .disabled(!canAfford)
+            } footer: {
+                Text("Each upgrade lets you bind one more Goal to its own farm plot. Cost grows with each upgrade.")
             }
         }
+        .navigationTitle("Expand Farm")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
