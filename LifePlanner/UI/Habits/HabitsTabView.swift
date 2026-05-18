@@ -60,6 +60,7 @@ struct HabitsTabView: View {
         HabitRow(
             habit: habit,
             onToggle: {
+                if !habit.isDone(on: Date()) { HapticPlayer.shared.crescendo() }
                 injected.interactors.habits.toggleDone(habit, on: Date(), in: modelContext)
             },
             onEdit: {

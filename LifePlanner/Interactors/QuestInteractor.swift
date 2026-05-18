@@ -134,6 +134,7 @@ final class RealQuestInteractor: QuestInteractor {
             throw QuestError.insufficientGold(have: have, need: need)
         }
         Task { @MainActor in SoundPlayer.shared.play(.questReroll) }
+        Task { @MainActor in HapticPlayer.shared.tap() }
 
         let day = calendar.startOfDay(for: quest.day)
         let todays = fetchQuests(on: day, in: context)
@@ -176,6 +177,7 @@ final class RealQuestInteractor: QuestInteractor {
         quest.updatedAt = Date()
         economy.credit(quest.goldReward, reason: "quest-\(quest.kind)", in: context)
         Task { @MainActor in SoundPlayer.shared.play(.questClaim) }
+        Task { @MainActor in HapticPlayer.shared.success() }
     }
 
     // MARK: - refreshTodaysCommonFieldSlots
