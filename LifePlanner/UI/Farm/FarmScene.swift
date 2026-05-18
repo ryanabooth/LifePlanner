@@ -261,6 +261,16 @@ final class FarmScene: SKScene {
         farmhouseDecoration.applyDecor(slug: equippedDecorSlug)
     }
 
+    // MARK: - Season
+
+    /// Apply season-specific background tint and ambient particle effects.
+    /// Called by `FarmTabView` on appear and whenever the season changes.
+    /// Safe to call multiple times — effects are replaced, not accumulated.
+    func applySeason(_ season: Season, reduceMotion: Bool) {
+        backgroundColor = season.backgroundColor
+        ambientLife.applySeasonalEffects(season, reduceMotion: reduceMotion)
+    }
+
     private func layoutFarmhouse() {
         guard size.width > 0, size.height > 0 else { return }
         farmhouseDecoration.position = CGPoint(

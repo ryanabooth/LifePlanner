@@ -44,6 +44,8 @@ struct FarmTabView: View {
     @State private var showAddGoal = false
     @State private var showDevMenu = false
 
+    private var currentSeason: Season { Season.current() }
+
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .topTrailing) {
@@ -52,6 +54,7 @@ struct FarmTabView: View {
                     .onAppear {
                         scene.topSafeAreaInset    = proxy.safeAreaInsets.top + 12
                         scene.bottomSafeAreaInset = proxy.safeAreaInsets.bottom + 20
+                        scene.applySeason(currentSeason, reduceMotion: reduceMotion)
                         pushSnapshot()
                         pushCosmeticSnapshot()
                     }
@@ -74,10 +77,13 @@ struct FarmTabView: View {
                     .padding(.trailing, 16)
                     .padding(.top, proxy.safeAreaInsets.top + 48)
 
-                WeatherHUDPill(event: activeWeather, onTap: { showWeatherExplainer = true })
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .padding(.leading, 16)
-                    .padding(.top, proxy.safeAreaInsets.top + 48)
+                VStack(alignment: .leading, spacing: 6) {
+                    WeatherHUDPill(event: activeWeather, onTap: { showWeatherExplainer = true })
+                    SeasonHUDPill(season: currentSeason)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(.leading, 16)
+                .padding(.top, proxy.safeAreaInsets.top + 48)
             }
             .overlay(alignment: .bottomTrailing) {
                 addFAB
