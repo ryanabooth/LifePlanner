@@ -111,9 +111,9 @@ Game-y systems that layer on top of the productivity core to keep long-term user
 
 - [ ] **Seasons.** Real-world calendar maps to spring / summer / fall / winter visuals. Farm scene tints + ambient particle effects change at each transition. Optional: per-season passive modifier (e.g. winter doubles decay for non-evergreens). `Season` enum derived from `Date`; no schema needed.
 - [ ] **Weather events.** Periodic 24-hour weather episodes — rain doubles habit contribution, drought halves task contribution, sunshine pays passive gold. Surfaced via a small HUD icon + tap-to-explain. New `DBModel.WeatherEvent { kind, startedAt, expiresAt }`. Schema bump.
-- [ ] **Achievements.** Meta-rewards for milestones: "Logged 100 habits", "First 30-day streak", "Owned 5 cosmetics", "Reached year 1 of farming", "First plot revived from dead". Surfaced via a trophy-shelf view + immediate local notification on first unlock. New `DBModel.Achievement { slug, unlockedAt }`. Catalog defined in code; rule evaluation hooks into existing toggle/claim paths.
+- [x] **Achievements.** Meta-rewards for milestones: "Logged 100 habits", "First 30-day streak", "Owned 5 cosmetics", "Reached year 1 of farming", "First plot revived from dead". Surfaced via a trophy-shelf view + immediate local notification on first unlock. New `DBModel.Achievement { slug, unlockedAt }`. Catalog defined in code; rule evaluation hooks into existing toggle/claim paths.
 - [ ] **Goal templates.** Pre-built goal templates ("Run a 5K", "Read 12 books", "Save $5K") so new users get a fast start without staring at an empty Goals tab. Static catalog + an "Add from template" button on the empty-state view. No schema change.
-- [ ] **Tool upgrades.** Buy-with-gold farm tools that boost contribution magnitudes (better watering can = +5 to habit contribution; sharper hoe = +5 task contribution). New `DBModel.OwnedTool` mirroring `OwnedCosmetic`. Schema bump.
+- [x] **Tool upgrades.** Buy-with-gold farm tools that boost contribution magnitudes (better watering can = +5 to habit contribution; sharper hoe = +5 task contribution). New `DBModel.OwnedTool` mirroring `OwnedCosmetic`. Schema bump.
 
 ## Phase 9 — App Store launch prep
 
