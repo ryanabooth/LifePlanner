@@ -219,7 +219,8 @@ final class LifePlannerTests: XCTestCase {
         let container = try ModelContainer(
             for: DBModel.FarmState.self, DBModel.FarmPlot.self, DBModel.Goal.self,
                 DBModel.Task.self, DBModel.Habit.self, DBModel.HabitLogEntry.self,
-                DBModel.Quest.self, DBModel.WeatherEvent.self, DBModel.Achievement.self,
+                DBModel.Quest.self, DBModel.WeatherEvent.self,
+                DBModel.Achievement.self, DBModel.OwnedTool.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
         return ModelContext(container)
@@ -1536,5 +1537,122 @@ final class LifePlannerTests: XCTestCase {
         let rows = try context.fetch(FetchDescriptor<DBModel.Achievement>())
         XCTAssertTrue(rows.contains { $0.slug == "week_strong" })
         XCTAssertFalse(rows.contains { $0.slug == "month_strong" }, "30-day threshold not met")
+    }
+
+    // MARK: - Tool tests
+
+    @MainActor
+    func test_tool_purchase_debitsGoldAndPersists() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let tools = RealToolInteractor(economy: economy)
+
+        // Bootstrap economy so gold exists.
+        economy.bootstrap(in: context)
+        economy.credit(200, reason: "seed", in: context)   // now 300g total (100 seed + 200)
+
+        let watering = ToolCatalog.all.first { $0.slug == "watering_can_ii" }!
+        try tools.purchase(watering, in: context)
+
+        let state = try context.fetch(FetchDescriptor<DBModel.FarmState>()).first!
+        XCTAssertEqual(state.gold, 300 - watering.goldCost)   // 225g
+
+        let owned = try context.fetch(FetchDescriptor<DBModel.OwnedTool>())
+        XCTAssertEqual(owned.count, 1)
+        XCTAssertEqual(owned.first?.slug, "watering_can_ii")
+    }
+
+    @MainActor
+    func test_tool_idempotent_purchaseFails() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let tools = RealToolInteractor(economy: economy)
+
+        economy.bootstrap(in: context)
+        economy.credit(200, reason: "seed", in: context)
+
+        let watering = ToolCatalog.all.first { $0.slug == "watering_can_ii" }!
+        try tools.purchase(watering, in: context)
+        XCTAssertThrowsError(try tools.purchase(watering, in: context))
+    }
+
+    @MainActor
+    func test_tool_habitBonusIsAdditive() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let tools = RealToolInteractor(economy: economy)
+
+        economy.bootstrap(in: context)
+        economy.credit(500, reason: "seed", in: context)
+
+        let t1 = ToolCatalog.all.first { $0.slug == "watering_can_ii" }!
+        let t2 = ToolCatalog.all.first { $0.slug == "watering_can_iii" }!
+        try tools.purchase(t1, in: context)
+        try tools.purchase(t2, in: context)
+
+        let bonus = tools.habitBonus(in: context)
+        XCTAssertEqual(bonus, t1.habitBonus + t2.habitBonus)
+    }
+
+    @MainActor
+    func test_tool_habitContributionIncludesBonus() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let tools = RealToolInteractor(economy: economy)
+        let farm = RealFarmInteractor(economy: economy, tools: tools)
+
+        economy.bootstrap(in: context)
+        economy.credit(200, reason: "seed", in: context)
+        farm.bootstrap(in: context)
+
+        let watering = ToolCatalog.all.first { $0.slug == "watering_can_ii" }!
+        try tools.purchase(watering, in: context)
+
+        let goal = DBModel.Goal(title: "Run", targetDate: Date())
+        context.insert(goal)
+        try farm.bindPlot(to: goal, in: context)
+
+        let habit = DBModel.Habit(title: "Morning run", frequency: .daily)
+        context.insert(habit)
+        habit.goals = [goal]
+
+        let beforeHealth = goal.plot!.health
+        farm.applyHabitCompletion(habit, in: context)
+        let afterHealth = goal.plot!.health
+
+        let expectedGain = FarmTuning.habitContribution + watering.habitBonus
+        XCTAssertEqual(afterHealth - beforeHealth, expectedGain)
+    }
+
+    @MainActor
+    func test_tool_taskContributionIncludesBonus() throws {
+        let context = try makeFarmContext()
+        let economy = RealEconomyInteractor()
+        let tools = RealToolInteractor(economy: economy)
+        let farm = RealFarmInteractor(economy: economy, tools: tools)
+
+        economy.bootstrap(in: context)
+        economy.credit(200, reason: "seed", in: context)
+        farm.bootstrap(in: context)
+
+        let hoe = ToolCatalog.all.first { $0.slug == "sharper_hoe_ii" }!
+        try tools.purchase(hoe, in: context)
+
+        let goal = DBModel.Goal(title: "Study", targetDate: Date())
+        context.insert(goal)
+        try farm.bindPlot(to: goal, in: context)
+
+        let task = DBModel.Task(title: "Read chapter", priority: .normal)
+        context.insert(task)
+        task.goals = [goal]
+
+        let beforeHealth = goal.plot!.health
+        farm.applyTaskCompletion(task, in: context)
+        let afterHealth = goal.plot!.health
+
+        let expectedGain = FarmTuning.taskBaseContribution
+            + (FarmTuning.taskPriorityBonus[.normal] ?? 0)
+            + hoe.taskBonus
+        XCTAssertEqual(afterHealth - beforeHealth, expectedGain)
     }
 }
