@@ -73,6 +73,7 @@
 				Repositories/Models/Goal.swift,
 				Repositories/Models/Habit.swift,
 				Repositories/Models/OwnedCosmetic.swift,
+				Repositories/Models/OwnedTool.swift,
 				Repositories/Models/Quest.swift,
 				Repositories/Models/Task.swift,
 				Repositories/Models/WeatherEvent.swift,

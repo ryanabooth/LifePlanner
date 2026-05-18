@@ -55,8 +55,10 @@ extension AppEnvironment {
         let economy = RealEconomyInteractor()
         let scheduler = RealNotificationScheduler()
         let achievementsInteractor = RealAchievementInteractor(scheduler: scheduler)
+        let toolsInteractor = RealToolInteractor(economy: economy)
         let farm = RealFarmInteractor(
-            economy: economy, scheduler: scheduler, achievements: achievementsInteractor)
+            economy: economy, scheduler: scheduler,
+            achievements: achievementsInteractor, tools: toolsInteractor)
         let quests = RealQuestInteractor(economy: economy)
         let tasks = RealTasksInteractor(
             scheduler: scheduler, farm: farm, quests: quests, achievements: achievementsInteractor)
@@ -77,7 +79,8 @@ extension AppEnvironment {
             quests: quests,
             cosmetics: cosmetics,
             weather: weather,
-            achievements: achievementsInteractor
+            achievements: achievementsInteractor,
+            tools: toolsInteractor
         )
     }
 }

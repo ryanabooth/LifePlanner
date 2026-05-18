@@ -93,17 +93,20 @@ final class RealFarmInteractor: FarmInteractor {
     private let economy: EconomyInteractor
     private let scheduler: NotificationScheduler
     private let achievements: AchievementInteractor
+    private let tools: ToolInteractor
     private let calendar: Calendar
 
     init(
         economy: EconomyInteractor = RealEconomyInteractor(),
         scheduler: NotificationScheduler = StubNotificationScheduler(),
         achievements: AchievementInteractor = StubAchievementInteractor(),
+        tools: ToolInteractor = StubToolInteractor(),
         calendar: Calendar = .current
     ) {
         self.economy = economy
         self.scheduler = scheduler
         self.achievements = achievements
+        self.tools = tools
         self.calendar = calendar
     }
 
@@ -187,13 +190,16 @@ final class RealFarmInteractor: FarmInteractor {
     @discardableResult
     func applyHabitCompletion(_ habit: DBModel.Habit, in context: ModelContext) -> Int {
         let weather = activeWeatherKind(in: context)
+        let toolBonus = tools.habitBonus(in: context)
         let goals = habit.goals ?? []
         if goals.isEmpty {
-            let amount = max(1, Int((Double(FarmTuning.commonFieldContribution) * weather.habitMultiplier).rounded()))
+            let base = FarmTuning.commonFieldContribution + toolBonus
+            let amount = max(1, Int((Double(base) * weather.habitMultiplier).rounded()))
             applyContributionToCommonField(amount: amount, in: context)
             return 0
         }
-        let amount = max(1, Int((Double(FarmTuning.habitContribution) * weather.habitMultiplier).rounded()))
+        let base = FarmTuning.habitContribution + toolBonus
+        let amount = max(1, Int((Double(base) * weather.habitMultiplier).rounded()))
         let newlyMatured = goals.reduce(0) { sum, goal in
             guard let plot = goal.plot else { return sum }
             return sum + (applyContribution(amount: amount, to: plot) ? 1 : 0)
@@ -207,7 +213,8 @@ final class RealFarmInteractor: FarmInteractor {
     @discardableResult
     func applyTaskCompletion(_ task: DBModel.Task, in context: ModelContext) -> Int {
         let weather = activeWeatherKind(in: context)
-        let base = FarmTuning.taskBaseContribution + (FarmTuning.taskPriorityBonus[task.priority] ?? 0)
+        let toolBonus = tools.taskBonus(in: context)
+        let base = FarmTuning.taskBaseContribution + (FarmTuning.taskPriorityBonus[task.priority] ?? 0) + toolBonus
         let amount = max(1, Int((Double(base) * weather.taskMultiplier).rounded()))
         let goals = task.goals ?? []
         if goals.isEmpty {

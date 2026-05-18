@@ -29,6 +29,7 @@ struct FarmTabView: View {
     @State private var showQuestLog = false
     @State private var showCapacityUpgrade = false
     @State private var showCosmeticShop = false
+    @State private var showWorkshop = false
     @State private var showAddMenu = false
     @State private var showWeatherExplainer = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -103,6 +104,9 @@ struct FarmTabView: View {
         .sheet(isPresented: $showCosmeticShop) {
             CosmeticShopView()
         }
+        .sheet(isPresented: $showWorkshop) {
+            WorkshopView()
+        }
         .sheet(isPresented: $showAddTask) {
             AddTaskSheet { draft in
                 injected.interactors.tasks.add(draft, in: modelContext)
@@ -158,6 +162,16 @@ struct FarmTabView: View {
                     .background(.thinMaterial, in: Circle())
             }
             .accessibilityLabel("Cosmetic Shop")
+
+            Button {
+                showWorkshop = true
+            } label: {
+                Image(systemName: "hammer")
+                    .font(.title3)
+                    .frame(width: 40, height: 40)
+                    .background(.thinMaterial, in: Circle())
+            }
+            .accessibilityLabel("Workshop")
         }
         .foregroundStyle(.primary)
     }
