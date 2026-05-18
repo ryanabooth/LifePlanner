@@ -5,32 +5,96 @@ struct GoalsTabView: View {
 
     @Environment(\.injected) private var injected: DIContainer
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     @Query(sort: [SortDescriptor(\DBModel.Goal.createdAt, order: .reverse)])
     private var goals: [DBModel.Goal]
 
     @State private var showAdd = false
     @State private var showTemplatePicker = false
+    @State private var selectedGoal: DBModel.Goal?
 
     var body: some View {
+        if sizeClass == .compact {
+            compactView
+        } else {
+            regularSplitView
+        }
+    }
+
+    // MARK: - Compact (iPhone) — unchanged push navigation
+
+    private var compactView: some View {
         NavigationStack {
-            Group {
-                if goals.isEmpty {
-                    ContentUnavailableView {
-                        Label("No goals yet", systemImage: "target")
-                    } description: {
-                        Text("Goals tie tasks and habits together. Tap + to add one, or start from a template.")
-                    } actions: {
-                        Button("Add from Template") { showTemplatePicker = true }
-                            .buttonStyle(.bordered)
+            goalListContent(selectionBinding: nil)
+                .navigationTitle("Goals")
+                .toolbar { addToolbarItem }
+                .sheet(isPresented: $showAdd) {
+                    AddGoalSheet { draft in
+                        injected.interactors.goals.add(draft, in: modelContext)
                     }
-                } else {
-                    List {
-                        ForEach(GoalStatus.allCases) { status in
-                            let inStatus = goals.filter { $0.status == status }
-                            if !inStatus.isEmpty {
-                                Section(status.label) {
-                                    ForEach(inStatus) { goal in
+                }
+                .sheet(isPresented: $showTemplatePicker) {
+                    GoalTemplatePickerSheet()
+                }
+        }
+    }
+
+    // MARK: - Regular (iPad) — two-pane split
+
+    private var regularSplitView: some View {
+        NavigationSplitView {
+            goalListContent(selectionBinding: $selectedGoal)
+                .navigationTitle("Goals")
+                .toolbar { addToolbarItem }
+                .sheet(isPresented: $showAdd) {
+                    AddGoalSheet { draft in
+                        injected.interactors.goals.add(draft, in: modelContext)
+                    }
+                }
+                .sheet(isPresented: $showTemplatePicker) {
+                    GoalTemplatePickerSheet()
+                }
+        } detail: {
+            if let goal = selectedGoal {
+                GoalDetailView(goal: goal)
+            } else {
+                ContentUnavailableView("Select a goal", systemImage: "target")
+            }
+        }
+    }
+
+    // MARK: - Shared list content
+
+    /// Builds the goals list.
+    /// - Parameter selectionBinding: when non-nil (iPad), rows set the binding instead of pushing via NavigationLink.
+    @ViewBuilder
+    private func goalListContent(selectionBinding: Binding<DBModel.Goal?>?) -> some View {
+        Group {
+            if goals.isEmpty {
+                ContentUnavailableView {
+                    Label("No goals yet", systemImage: "target")
+                } description: {
+                    Text("Goals tie tasks and habits together. Tap + to add one, or start from a template.")
+                } actions: {
+                    Button("Add from Template") { showTemplatePicker = true }
+                        .buttonStyle(.bordered)
+                }
+            } else {
+                List(selection: selectionBinding) {
+                    ForEach(GoalStatus.allCases) { status in
+                        let inStatus = goals.filter { $0.status == status }
+                        if !inStatus.isEmpty {
+                            Section(status.label) {
+                                ForEach(inStatus) { goal in
+                                    if let binding = selectionBinding {
+                                        // iPad: tap selects into the detail pane
+                                        GoalRow(goal: goal)
+                                            .tag(goal)
+                                            .contentShape(Rectangle())
+                                            .onTapGesture { binding.wrappedValue = goal }
+                                    } else {
+                                        // iPhone: standard push
                                         NavigationLink {
                                             GoalDetailView(goal: goal)
                                         } label: {
@@ -43,29 +107,24 @@ struct GoalsTabView: View {
                     }
                 }
             }
-            .navigationTitle("Goals")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
-                        Button { showAdd = true } label: {
-                            Label("New Goal", systemImage: "plus")
-                        }
-                        Button { showTemplatePicker = true } label: {
-                            Label("Add from Template", systemImage: "doc.text")
-                        }
-                    } label: {
-                        Image(systemName: "plus")
-                            .accessibilityLabel("Add goal")
-                    }
+        }
+    }
+
+    // MARK: - Toolbar
+
+    @ToolbarContentBuilder
+    private var addToolbarItem: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            Menu {
+                Button { showAdd = true } label: {
+                    Label("New Goal", systemImage: "plus")
                 }
-            }
-            .sheet(isPresented: $showAdd) {
-                AddGoalSheet { draft in
-                    injected.interactors.goals.add(draft, in: modelContext)
+                Button { showTemplatePicker = true } label: {
+                    Label("Add from Template", systemImage: "doc.text")
                 }
-            }
-            .sheet(isPresented: $showTemplatePicker) {
-                GoalTemplatePickerSheet()
+            } label: {
+                Image(systemName: "plus")
+                    .accessibilityLabel("Add goal")
             }
         }
     }

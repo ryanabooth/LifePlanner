@@ -42,7 +42,7 @@ private struct AchievementTile: View {
     var body: some View {
         VStack(spacing: 8) {
             Text(definition.emoji)
-                .font(.system(size: 44))
+                .font(.largeTitle)
                 .saturation(isUnlocked ? 1.0 : 0.0)
                 .opacity(isUnlocked ? 1.0 : 0.35)
 

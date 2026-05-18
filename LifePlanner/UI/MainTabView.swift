@@ -11,13 +11,26 @@ enum MainTab: Hashable {
 struct MainTabView: View {
 
     @Environment(\.injected) private var injected: DIContainer
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @Binding var selection: MainTab
+
+    @State private var selectedTab: MainTab? = .farm
 
     init(selection: Binding<MainTab> = .constant(.farm)) {
         _selection = selection
     }
 
     var body: some View {
+        if sizeClass == .compact {
+            compactTabView
+        } else {
+            regularSplitView
+        }
+    }
+
+    // MARK: - Compact (iPhone)
+
+    private var compactTabView: some View {
         TabView(selection: $selection) {
             FarmTabView()
                 .tabItem { Label("Farm", systemImage: "leaf") }
@@ -38,6 +51,30 @@ struct MainTabView: View {
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape") }
                 .tag(MainTab.settings)
+        }
+    }
+
+    // MARK: - Regular (iPad)
+
+    private var regularSplitView: some View {
+        NavigationSplitView {
+            List(selection: $selectedTab) {
+                NavigationLink(value: MainTab.farm)     { Label("Farm",     systemImage: "leaf") }
+                NavigationLink(value: MainTab.tasks)    { Label("Tasks",    systemImage: "checklist") }
+                NavigationLink(value: MainTab.habits)   { Label("Habits",   systemImage: "repeat") }
+                NavigationLink(value: MainTab.goals)    { Label("Goals",    systemImage: "target") }
+                NavigationLink(value: MainTab.settings) { Label("Settings", systemImage: "gearshape") }
+            }
+            .navigationTitle("Tiller")
+        } detail: {
+            switch selectedTab {
+            case .farm:     FarmTabView()
+            case .tasks:    TasksTabView()
+            case .habits:   HabitsTabView()
+            case .goals:    GoalsTabView()
+            case .settings: SettingsView()
+            case nil:       FarmTabView()
+            }
         }
     }
 }
