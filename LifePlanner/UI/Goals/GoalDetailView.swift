@@ -179,9 +179,11 @@ struct GoalDetailView: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.borderless)
+                        .accessibilityLabel(sub.isDone ? "Reopen \(sub.title)" : "Complete \(sub.title)")
                         Text(sub.title)
                             .strikethrough(sub.isDone)
                             .foregroundStyle(sub.isDone ? .secondary : .primary)
+                            .accessibilityHidden(true)
                     }
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
@@ -201,6 +203,7 @@ struct GoalDetailView: View {
                         .foregroundStyle(.tint)
                 }
                 .buttonStyle(.borderless)
+                .accessibilityLabel("Add sub-goal")
                 .disabled(newSubGoalTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         } header: {
@@ -234,6 +237,10 @@ struct GoalDetailView: View {
                 if goal.metricTarget > 0 {
                     ProgressView(value: goal.metricProgress)
                         .tint(.green)
+                        .accessibilityLabel("Progress")
+                        .accessibilityValue(
+                            "\(formattedValue(goal.metricValue)) of \(formattedValue(goal.metricTarget)) \(goal.metricUnit ?? "")"
+                        )
                 }
             }
             Button {

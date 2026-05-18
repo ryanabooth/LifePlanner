@@ -44,6 +44,7 @@ struct TasksTabView: View {
             }
         } label: {
             Image(systemName: "arrow.up.arrow.down")
+                .accessibilityLabel("Sort tasks")
         }
     }
 }
@@ -160,6 +161,21 @@ private struct TaskRow: View {
                 }
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(rowAccessibilityLabel)
+    }
+
+    private var rowAccessibilityLabel: String {
+        var parts: [String] = []
+        parts.append(task.title)
+        parts.append("\(task.priority.label) priority")
+        if let due = task.dueDate {
+            let formatted = due.formatted(.dateTime.month(.abbreviated).day().hour().minute())
+            parts.append("due \(formatted)")
+        }
+        if task.recurrence != nil { parts.append("recurring") }
+        if task.isDone { parts.append("completed") }
+        return parts.joined(separator: ", ")
     }
 
     private var priorityColor: Color {

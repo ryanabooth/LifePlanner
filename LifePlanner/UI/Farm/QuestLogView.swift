@@ -234,6 +234,8 @@ private struct WeeklyQuestRow: View {
                     total: Double(max(quest.progressTarget, 1))
                 )
                 .tint(.green)
+                .accessibilityLabel("Weekly quest progress")
+                .accessibilityValue("\(quest.progress) out of \(quest.progressTarget)")
                 Text("\(quest.progress) / \(quest.progressTarget) mature transitions")
                     .font(.caption)
                     .foregroundStyle(.secondary)
