@@ -1,19 +1,18 @@
 import SwiftUI
 import SwiftData
 
-/// Modal presented when the user taps a farm plot. Shows the bound Goal's
-/// linked tasks and habits with one-tap completion shortcuts; surfaces
-/// re-plant when the plot is dead.
-struct PlotDetailSheet: View {
+/// Detail view pushed onto the farm's NavigationStack when the user taps a
+/// farm plot. Equivalent to the former `PlotDetailSheet` but lives inside the
+/// existing NavigationStack so the tab bar reappears for navigation.
+struct PlotDetailView: View {
 
     @Environment(\.injected) private var injected: DIContainer
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
 
     let plotID: UUID
 
     /// Re-queried by id so SwiftData updates (health change, state transition,
-    /// re-plant) reflect immediately while the sheet is open.
+    /// re-plant) reflect immediately while the view is visible.
     @Query private var plots: [DBModel.FarmPlot]
     @Query private var weatherEvents: [DBModel.WeatherEvent]
 
@@ -36,35 +35,31 @@ struct PlotDetailSheet: View {
     private var plot: DBModel.FarmPlot? { plots.first }
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if let plot {
-                    content(for: plot)
-                } else {
-                    ContentUnavailableView(
-                        "Plot unavailable",
-                        systemImage: "leaf",
-                        description: Text("This plot was removed.")
-                    )
+        Group {
+            if let plot {
+                content(for: plot)
+            } else {
+                ContentUnavailableView(
+                    "Plot unavailable",
+                    systemImage: "leaf",
+                    description: Text("This plot was removed.")
+                )
+            }
+        }
+        .navigationTitle(plot?.goal?.title ?? "Common Field")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .tabBar)
+        .toolbar {
+            if plot?.goal != nil {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Edit Goal") { showEditGoal = true }
                 }
             }
-            .navigationTitle(plot?.goal?.title ?? "Common Field")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if plot?.goal != nil {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Edit Goal") { showEditGoal = true }
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-            .sheet(isPresented: $showEditGoal) {
-                if let goal = plot?.goal {
-                    AddGoalSheet(existing: goal) { draft in
-                        injected.interactors.goals.update(goal, with: draft, in: modelContext)
-                    }
+        }
+        .sheet(isPresented: $showEditGoal) {
+            if let goal = plot?.goal {
+                AddGoalSheet(existing: goal) { draft in
+                    injected.interactors.goals.update(goal, with: draft, in: modelContext)
                 }
             }
         }
