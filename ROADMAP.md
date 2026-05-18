@@ -101,9 +101,9 @@ Productivity-app maturity work. Closing the gap from "playable in TestFlight" to
 - [x] **Onboarding flow.** First-launch carousel (TabView with `.page` style) introducing the farm metaphor: farm = your goals, plots = goals, habits/tasks pump health, quests pay gold, neglect kills plots. Skip-able. Persist `hasCompletedOnboarding: Bool` on `FarmState`. 4–6 pages with illustrations.
 - [x] **Settings screen.** Gear-icon entry from any tab. Sections: Notifications (master toggle + per-type for plot alerts / habit reminders / streak milestones), Data (export all data as JSON, import from JSON, reset farm), About (version, links to docs/asset-spec.md once external). Uses the existing notification permission flow; no new schema.
 - [x] **Recurring tasks.** Tasks are single-shot today. Add `recurrence: TaskRecurrence?` (`.daily`, `.weekly`, `.weekdays`, `.custom([weekday])`). On `toggleDone`, if the task has a recurrence, the next occurrence is auto-created with a bumped `dueDate`. Schema bump. Updates `AddTaskSheet` UI.
-- [ ] **Accessibility audit.** VoiceOver labels on every farm sprite, plot-health bar, and quest row. Dynamic Type support throughout (no hard-coded `.caption` sizes that don't scale). Contrast check on placeholder farm colors. Respect `UIAccessibility.isReduceMotionEnabled` for farm animations.
-- [ ] **iPad layout pass.** Currently renders but isn't optimized — `NavigationSplitView` for tab layout, larger farm scene, two-pane goal detail.
-- [ ] **Dark mode pass.** Verify every view (esp. SpriteKit-backed) reads cleanly in dark mode. Adjust placeholder farm colors if contrast slips.
+- [x] **Accessibility audit.** VoiceOver labels on every farm sprite, plot-health bar, and quest row. Dynamic Type support throughout (no hard-coded `.caption` sizes that don't scale). Contrast check on placeholder farm colors. Respect `UIAccessibility.isReduceMotionEnabled` for farm animations.
+- [x] **iPad layout pass.** Currently renders but isn't optimized — `NavigationSplitView` for tab layout, larger farm scene, two-pane goal detail.
+- [x] **Dark mode pass.** Verify every view (esp. SpriteKit-backed) reads cleanly in dark mode. Adjust placeholder farm colors if contrast slips.
 
 ## Phase 8 — Farm-sim depth
 
