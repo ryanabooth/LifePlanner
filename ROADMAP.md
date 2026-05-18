@@ -57,10 +57,10 @@ The cutover release. Hard schema reset; the previous local DB is discarded on fi
 
 Once the v0.5.0 mechanics ship, the focus moves to making the farm look and feel like a game.
 
-- [ ] **AI-generated asset pack.** Lock palette, tile size, isometric vs. top-down. Generate per-state sprites for each `FarmElementType` (25 imagesets: 5 kinds × 5 states) plus `hud_gold_icon`. Each sprite drops into `Assets.xcassets` under the `AssetKeys`-defined names — no code change required.
+- [x] **AI-generated asset pack.** Lock palette, tile size, isometric vs. top-down. Generate per-state sprites for each `FarmElementType` (25 imagesets: 5 kinds × 5 states) plus `hud_gold_icon`. Each sprite drops into `Assets.xcassets` under the `AssetKeys`-defined names — no code change required.
 - [x] **Animation passes.** Idle wiggle / sway, contribution feedback (sparkle on health gain), wither shake, death dissolve.
 - [x] **Ambient farm life.** Background NPCs (butterflies, birds) — pure flavor, no gameplay tie.
-- [ ] **Sound.** `SoundPlayer` scaffolding is wired (`sfx_contribution`, `sfx_quest_claim`, `sfx_quest_reroll`, `sfx_farm_ambience`). Remaining work: source or generate the four audio files and add them to the bundle. No code changes needed.
+- [x] **Sound.** `SoundPlayer` scaffolding is wired (`sfx_contribution`, `sfx_quest_claim`, `sfx_quest_reroll`, `sfx_farm_ambience`). Remaining work: source or generate the four audio files and add them to the bundle. No code changes needed.
 
 ## Phase 3 — Cosmetics economy ✓
 
