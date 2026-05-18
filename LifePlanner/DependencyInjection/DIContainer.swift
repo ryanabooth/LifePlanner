@@ -28,6 +28,7 @@ extension DIContainer {
         let cosmetics: CosmeticInteractor
         let weather: WeatherInteractor
         let achievements: AchievementInteractor
+        let tools: ToolInteractor
 
         static var stub: Self {
             .init(
@@ -40,7 +41,8 @@ extension DIContainer {
                 quests: StubQuestInteractor(),
                 cosmetics: StubCosmeticInteractor(),
                 weather: StubWeatherInteractor(),
-                achievements: StubAchievementInteractor()
+                achievements: StubAchievementInteractor(),
+                tools: StubToolInteractor()
             )
         }
     }

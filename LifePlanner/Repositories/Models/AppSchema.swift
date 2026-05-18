@@ -17,7 +17,9 @@ extension Schema {
             DBModel.Quest.self,
             DBModel.OwnedCosmetic.self,
             DBModel.WeatherEvent.self,
+
             DBModel.Achievement.self,
+            DBModel.OwnedTool.self,
         ], version: actualVersion)
     }
 }
