@@ -55,6 +55,7 @@ struct GoalsTabView: View {
                         }
                     } label: {
                         Image(systemName: "plus")
+                            .accessibilityLabel("Add goal")
                     }
                 }
             }
@@ -97,6 +98,20 @@ private struct GoalRow: View {
                 .foregroundStyle(.secondary)
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(rowAccessibilityLabel)
+    }
+
+    private var rowAccessibilityLabel: String {
+        var parts = [goal.title, goal.status.label]
+        if let date = goal.targetDate {
+            parts.append("due \(date.formatted(date: .abbreviated, time: .omitted))")
+        }
+        let taskCount = (goal.linkedTasks ?? []).count
+        let habitCount = (goal.linkedHabits ?? []).count
+        if taskCount > 0 { parts.append("\(taskCount) task\(taskCount == 1 ? "" : "s")") }
+        if habitCount > 0 { parts.append("\(habitCount) habit\(habitCount == 1 ? "" : "s")") }
+        return parts.joined(separator: ", ")
     }
 }
 

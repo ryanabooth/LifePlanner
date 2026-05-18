@@ -5,6 +5,7 @@ struct OnboardingView: View {
     let onComplete: (_ openGoals: Bool) -> Void
 
     @State private var page = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -12,7 +13,11 @@ struct OnboardingView: View {
                 ForEach(OnboardingPage.all.indices, id: \.self) { i in
                     let p = OnboardingPage.all[i]
                     PageCard(page: p, isLast: i == OnboardingPage.all.count - 1,
-                             onNext:       { withAnimation { page = i + 1 } },
+                             onNext:       {
+                                 withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.3)) {
+                                     page = i + 1
+                                 }
+                             },
                              onGetStarted: { onComplete(true) },
                              onSkip:       { onComplete(false) })
                         .tag(i)
@@ -27,10 +32,11 @@ struct OnboardingView: View {
                     Capsule()
                         .fill(i == page ? Color.white : Color.white.opacity(0.4))
                         .frame(width: i == page ? 20 : 7, height: 7)
-                        .animation(.easeInOut(duration: 0.2), value: page)
+                        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: page)
                 }
             }
             .padding(.top, 56)
+            .accessibilityHidden(true)
 
             // Skip button — hidden on last page
             if page < OnboardingPage.all.count - 1 {
@@ -41,6 +47,7 @@ struct OnboardingView: View {
                         .foregroundStyle(.white.opacity(0.85))
                         .padding(.top, 48)
                         .padding(.trailing, 20)
+                        .accessibilityLabel("Skip onboarding")
                 }
             }
         }
@@ -69,9 +76,13 @@ private struct PageCard: View {
                         .fill(.white.opacity(0.15))
                         .frame(width: 180, height: 180)
                     Image(systemName: page.symbol)
-                        .font(.system(size: 80, weight: .medium))
-                        .foregroundStyle(.white)
+                        .resizable()
+                        .scaledToFit()
                         .symbolRenderingMode(.hierarchical)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.white)
+                        .frame(width: 80, height: 80)
+                        .accessibilityHidden(true)
                 }
                 .padding(.bottom, 44)
 
@@ -117,6 +128,7 @@ private struct PageCard: View {
                             .frame(width: 60, height: 60)
                             .background(.white, in: Circle())
                     }
+                    .accessibilityLabel("Next")
                     .padding(.bottom, 52)
                 }
             }

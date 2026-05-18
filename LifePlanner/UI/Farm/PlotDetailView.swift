@@ -94,6 +94,8 @@ struct PlotDetailView: View {
             LabeledContent("Health", value: "\(plot.health) / 100")
             ProgressView(value: Double(plot.health), total: 100)
                 .tint(healthTint(plot.health, state: plot.state))
+                .accessibilityLabel("Health")
+                .accessibilityValue("\(plot.health) out of 100")
             if let weather = activeWeather, weather.kind != .clear,
                let modifier = weatherModifierText(for: weather.kind, plotKind: plot.kind) {
                 LabeledContent("Today", value: modifier)
@@ -137,6 +139,7 @@ struct PlotDetailView: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(task.isDone ? "Reopen \(task.title)" : "Mark complete: \(task.title)")
                 }
             }
         } header: {
@@ -165,6 +168,7 @@ struct PlotDetailView: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(habit.isDone(on: Date()) ? "Undo log: \(habit.title)" : "Log habit: \(habit.title)")
                 }
             }
         } header: {
