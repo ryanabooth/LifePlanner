@@ -29,9 +29,14 @@ protocol CosmeticInteractor {
 final class RealCosmeticInteractor: CosmeticInteractor {
 
     private let economy: EconomyInteractor
+    private let achievements: AchievementInteractor
 
-    init(economy: EconomyInteractor = RealEconomyInteractor()) {
+    init(
+        economy: EconomyInteractor = RealEconomyInteractor(),
+        achievements: AchievementInteractor = StubAchievementInteractor()
+    ) {
         self.economy = economy
+        self.achievements = achievements
     }
 
     func purchase(slug: String, in context: ModelContext) throws {
@@ -44,6 +49,7 @@ final class RealCosmeticInteractor: CosmeticInteractor {
         }
         try economy.spend(catalogItem.goldCost, reason: "cosmetic-\(slug)", in: context)
         context.insert(DBModel.OwnedCosmetic(slug: slug, kind: catalogItem.kind))
+        achievements.checkAll(in: context)
         context.saveQuietly()
     }
 

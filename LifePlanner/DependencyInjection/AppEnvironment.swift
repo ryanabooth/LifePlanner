@@ -54,13 +54,18 @@ extension AppEnvironment {
         // and quest auto-claim are consistent across entry points.
         let economy = RealEconomyInteractor()
         let scheduler = RealNotificationScheduler()
-        let farm = RealFarmInteractor(economy: economy, scheduler: scheduler)
+        let achievementsInteractor = RealAchievementInteractor(scheduler: scheduler)
+        let farm = RealFarmInteractor(
+            economy: economy, scheduler: scheduler, achievements: achievementsInteractor)
         let quests = RealQuestInteractor(economy: economy)
-        let tasks = RealTasksInteractor(scheduler: scheduler, farm: farm, quests: quests)
+        let tasks = RealTasksInteractor(
+            scheduler: scheduler, farm: farm, quests: quests, achievements: achievementsInteractor)
         let habits = RealHabitsInteractor(
-            scheduler: scheduler, economy: economy, farm: farm, quests: quests)
+            scheduler: scheduler, economy: economy, farm: farm, quests: quests,
+            achievements: achievementsInteractor)
         let goals = RealGoalsInteractor(farm: farm)
-        let cosmetics = RealCosmeticInteractor(economy: economy)
+        let cosmetics = RealCosmeticInteractor(
+            economy: economy, achievements: achievementsInteractor)
         let weather = RealWeatherInteractor(economy: economy, farm: farm)
         return .init(
             userPermissions: userPermissions,
@@ -71,7 +76,8 @@ extension AppEnvironment {
             farm: farm,
             quests: quests,
             cosmetics: cosmetics,
-            weather: weather
+            weather: weather,
+            achievements: achievementsInteractor
         )
     }
 }

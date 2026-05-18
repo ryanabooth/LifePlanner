@@ -42,19 +42,22 @@ final class RealHabitsInteractor: HabitsInteractor {
     private let economy: EconomyInteractor
     private let farm: FarmInteractor
     private let quests: QuestInteractor
+    private let achievements: AchievementInteractor
 
     init(
         calendar: Calendar = .current,
         scheduler: NotificationScheduler = RealNotificationScheduler(),
         economy: EconomyInteractor = RealEconomyInteractor(),
         farm: FarmInteractor = StubFarmInteractor(),
-        quests: QuestInteractor = StubQuestInteractor()
+        quests: QuestInteractor = StubQuestInteractor(),
+        achievements: AchievementInteractor = StubAchievementInteractor()
     ) {
         self.calendar = calendar
         self.scheduler = scheduler
         self.economy = economy
         self.farm = farm
         self.quests = quests
+        self.achievements = achievements
     }
 
     func add(_ draft: HabitDraft, in context: ModelContext) {
@@ -126,6 +129,7 @@ final class RealHabitsInteractor: HabitsInteractor {
         habit.updatedAt = Date()
         recomputeStreak(for: habit, on: day)
         checkStreakMilestone(for: habit, in: context)
+        achievements.checkAll(in: context)
         context.saveQuietly()
     }
 

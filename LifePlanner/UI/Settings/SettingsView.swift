@@ -52,6 +52,9 @@ struct SettingsView: View {
             NavigationLink(destination: StatsView()) {
                 Label("View insights", systemImage: "chart.xyaxis.line")
             }
+            NavigationLink(destination: TrophyShelfView()) {
+                Label("Trophy shelf", systemImage: "trophy")
+            }
         }
     }
 

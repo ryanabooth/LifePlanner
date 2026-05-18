@@ -11,6 +11,8 @@ protocol NotificationScheduler: Sendable {
     func cancelPlotAlert(plotID: UUID) async
     /// Fire a one-shot streak-milestone celebration immediately.
     func scheduleStreakMilestone(habitTitle: String, streak: Int, bonus: Int) async
+    /// Fire a one-shot achievement-unlock banner immediately.
+    func scheduleAchievementUnlocked(emoji: String, title: String) async
 }
 
 extension NotificationScheduler {
@@ -130,6 +132,22 @@ final class RealNotificationScheduler: NotificationScheduler {
         try? await center.add(request)
     }
 
+    func scheduleAchievementUnlocked(emoji: String, title: String) async {
+        guard await ensureAuthorized() else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = "\(emoji) Achievement Unlocked!"
+        content.body = title
+        content.sound = .default
+
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: "achievement-\(UUID().uuidString)",
+            content: content,
+            trigger: trigger)
+        try? await center.add(request)
+    }
+
     private func ensureAuthorized() async -> Bool {
         let settings = await center.notificationSettings()
         switch settings.authorizationStatus {
@@ -153,4 +171,5 @@ final class StubNotificationScheduler: NotificationScheduler {
     func schedulePlotAlert(plotID: UUID, title: String, body: String, fireAt: Date) async {}
     func cancelPlotAlert(plotID: UUID) async {}
     func scheduleStreakMilestone(habitTitle: String, streak: Int, bonus: Int) async {}
+    func scheduleAchievementUnlocked(emoji: String, title: String) async {}
 }

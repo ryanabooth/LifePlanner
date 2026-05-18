@@ -18,6 +18,17 @@ extension DBModel {
         var createdAt: Date = Date()
         var updatedAt: Date = Date()
 
+        // MARK: - Achievement counters (added v0.13.0)
+
+        /// Cumulative gold credited across all time. Powers "Penny Pincher".
+        var totalGoldEarned: Int = 0
+        /// Cumulative gold spent across all time. Powers "Big Spender".
+        var totalGoldSpent: Int = 0
+        /// Number of times any plot has transitioned to .mature. Powers "Harvest Master".
+        var totalMatureTransitions: Int = 0
+        /// Number of dead plots ever replanted. Powers "Revived".
+        var totalReplants: Int = 0
+
         init(
             id: UUID = UUID(),
             gold: Int = 100,

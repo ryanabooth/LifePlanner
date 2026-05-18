@@ -92,15 +92,18 @@ final class RealFarmInteractor: FarmInteractor {
 
     private let economy: EconomyInteractor
     private let scheduler: NotificationScheduler
+    private let achievements: AchievementInteractor
     private let calendar: Calendar
 
     init(
         economy: EconomyInteractor = RealEconomyInteractor(),
         scheduler: NotificationScheduler = StubNotificationScheduler(),
+        achievements: AchievementInteractor = StubAchievementInteractor(),
         calendar: Calendar = .current
     ) {
         self.economy = economy
         self.scheduler = scheduler
+        self.achievements = achievements
         self.calendar = calendar
     }
 
@@ -191,10 +194,14 @@ final class RealFarmInteractor: FarmInteractor {
             return 0
         }
         let amount = max(1, Int((Double(FarmTuning.habitContribution) * weather.habitMultiplier).rounded()))
-        return goals.reduce(0) { sum, goal in
+        let newlyMatured = goals.reduce(0) { sum, goal in
             guard let plot = goal.plot else { return sum }
             return sum + (applyContribution(amount: amount, to: plot) ? 1 : 0)
         }
+        if newlyMatured > 0, let state = farmState(in: context) {
+            state.totalMatureTransitions += newlyMatured
+        }
+        return newlyMatured
     }
 
     @discardableResult
@@ -207,10 +214,14 @@ final class RealFarmInteractor: FarmInteractor {
             applyContributionToCommonField(amount: amount, in: context)
             return 0
         }
-        return goals.reduce(0) { sum, goal in
+        let newlyMatured = goals.reduce(0) { sum, goal in
             guard let plot = goal.plot else { return sum }
             return sum + (applyContribution(amount: amount, to: plot) ? 1 : 0)
         }
+        if newlyMatured > 0, let state = farmState(in: context) {
+            state.totalMatureTransitions += newlyMatured
+        }
+        return newlyMatured
     }
 
     private func activeWeatherKind(in context: ModelContext) -> WeatherKind {
@@ -329,8 +340,12 @@ final class RealFarmInteractor: FarmInteractor {
         plot.state = .growing
         plot.lastContribution = Date()
         plot.updatedAt = Date()
+        if let state = farmState(in: context) {
+            state.totalReplants += 1
+        }
         let id = plot.id
         Task.detached { [scheduler] in await scheduler.cancelPlotAlert(plotID: id) }
+        achievements.checkAll(in: context)
     }
 
     func purchaseCapacity(in context: ModelContext) throws {
