@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 enum MainTab: Hashable {
     case farm
@@ -15,6 +16,14 @@ struct MainTabView: View {
     @Binding var selection: MainTab
 
     @State private var selectedTab: MainTab? = .farm
+
+    @Query private var allQuests: [DBModel.Quest]
+
+    private var activeQuestCount: Int {
+        let today = Calendar.current.startOfDay(for: Date())
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today) ?? today
+        return allQuests.filter { $0.day >= today && $0.day < tomorrow && $0.state == .active }.count
+    }
 
     init(selection: Binding<MainTab> = .constant(.farm)) {
         _selection = selection
@@ -35,6 +44,7 @@ struct MainTabView: View {
             FarmTabView()
                 .tabItem { Label("Farm", systemImage: "leaf") }
                 .tag(MainTab.farm)
+                .badge(activeQuestCount)
 
             TasksTabView()
                 .tabItem { Label("Tasks", systemImage: "checklist") }
@@ -60,6 +70,7 @@ struct MainTabView: View {
         NavigationSplitView {
             List(selection: $selectedTab) {
                 NavigationLink(value: MainTab.farm)     { Label("Farm",     systemImage: "leaf") }
+                    .badge(activeQuestCount)
                 NavigationLink(value: MainTab.tasks)    { Label("Tasks",    systemImage: "checklist") }
                 NavigationLink(value: MainTab.habits)   { Label("Habits",   systemImage: "repeat") }
                 NavigationLink(value: MainTab.goals)    { Label("Goals",    systemImage: "target") }

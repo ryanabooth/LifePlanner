@@ -15,6 +15,13 @@ struct FarmTabView: View {
     @Query private var plots: [DBModel.FarmPlot]
     @Query private var farmStates: [DBModel.FarmState]
     @Query private var ownedCosmetics: [DBModel.OwnedCosmetic]
+    @Query private var allQuests: [DBModel.Quest]
+
+    private var activeQuestCount: Int {
+        let today = Calendar.current.startOfDay(for: Date())
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: today) ?? today
+        return allQuests.filter { $0.day >= today && $0.day < tomorrow && $0.state == .active }.count
+    }
 
     /// Persisted across re-renders so SpriteView doesn't reset every body
     /// evaluation. Size is provisional — the scene uses `.resizeFill` so it
@@ -139,12 +146,22 @@ struct FarmTabView: View {
                 HapticPlayer.shared.tap()
                 showQuestLog = true
             } label: {
-                Image(systemName: "scroll")
-                    .font(.title3)
-                    .frame(width: 40, height: 40)
-                    .background(.thinMaterial, in: Circle())
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: "scroll")
+                        .font(.title3)
+                        .frame(width: 40, height: 40)
+                        .background(.thinMaterial, in: Circle())
+                    if activeQuestCount > 0 {
+                        Text("\(activeQuestCount)")
+                            .font(.caption2.bold())
+                            .foregroundStyle(.white)
+                            .padding(4)
+                            .background(.red, in: Circle())
+                            .offset(x: 6, y: -6)
+                    }
+                }
             }
-            .accessibilityLabel("Quest Log")
+            .accessibilityLabel(activeQuestCount > 0 ? "Quest Log, \(activeQuestCount) active" : "Quest Log")
 
             Button {
                 HapticPlayer.shared.tap()
