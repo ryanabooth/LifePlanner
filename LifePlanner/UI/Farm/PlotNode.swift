@@ -196,7 +196,11 @@ final class PlotNode: SKNode {
         for i in 0..<count {
             let angle   = CGFloat(i) / CGFloat(count) * 2 * .pi
             let sparkle = SKShapeNode(circleOfRadius: 3)
-            sparkle.fillColor   = UIColor(red: 1.0, green: 0.92, blue: 0.45, alpha: 1)
+            sparkle.fillColor   = UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(red: 1.0, green: 0.85, blue: 0.30, alpha: 1)
+                    : UIColor(red: 1.0, green: 0.92, blue: 0.45, alpha: 1)
+            }
             sparkle.strokeColor = .clear
             sparkle.position    = .zero
             sparkle.zPosition   = 10

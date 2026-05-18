@@ -46,7 +46,11 @@ final class AvatarController {
         bodyNode = body
 
         let head = SKShapeNode(circleOfRadius: 8)
-        head.fillColor = UIColor(red: 0.95, green: 0.80, blue: 0.65, alpha: 1)
+        head.fillColor = UIColor { trait in
+            trait.userInterfaceStyle == .dark
+                ? UIColor(red: 0.70, green: 0.55, blue: 0.42, alpha: 1)
+                : UIColor(red: 0.95, green: 0.80, blue: 0.65, alpha: 1)
+        }
         head.strokeColor = .clear
         head.position = CGPoint(x: 0, y: 18)
         container.addChild(head)
@@ -79,19 +83,59 @@ final class AvatarController {
 
     private func hatColor(for slug: String) -> UIColor {
         switch slug {
-        case "hat_cap":    return UIColor(red: 0.25, green: 0.45, blue: 0.80, alpha: 1)
-        case "hat_sunhat": return UIColor(red: 0.87, green: 0.72, blue: 0.35, alpha: 1)
-        case "hat_tophat": return UIColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 1)
-        default:           return UIColor(red: 0.50, green: 0.30, blue: 0.10, alpha: 1)
+        case "hat_cap":
+            return UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.40, green: 0.60, blue: 1.00, alpha: 1)
+                    : UIColor(red: 0.25, green: 0.45, blue: 0.80, alpha: 1)
+            }
+        case "hat_sunhat":
+            return UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(red: 1.00, green: 0.88, blue: 0.45, alpha: 1)
+                    : UIColor(red: 0.87, green: 0.72, blue: 0.35, alpha: 1)
+            }
+        case "hat_tophat":
+            return UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.30, green: 0.30, blue: 0.30, alpha: 1)
+                    : UIColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 1)
+            }
+        default:
+            return UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.70, green: 0.45, blue: 0.18, alpha: 1)
+                    : UIColor(red: 0.50, green: 0.30, blue: 0.10, alpha: 1)
+            }
         }
     }
 
     private func outfitColor(for slug: String?) -> UIColor {
         switch slug {
-        case "outfit_overalls": return UIColor(red: 0.25, green: 0.40, blue: 0.75, alpha: 1)
-        case "outfit_plaid":    return UIColor(red: 0.65, green: 0.20, blue: 0.20, alpha: 1)
-        case "outfit_formal":   return UIColor(red: 0.10, green: 0.10, blue: 0.35, alpha: 1)
-        default:                return UIColor(red: 0.36, green: 0.20, blue: 0.09, alpha: 1)
+        case "outfit_overalls":
+            return UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.40, green: 0.55, blue: 0.95, alpha: 1)
+                    : UIColor(red: 0.25, green: 0.40, blue: 0.75, alpha: 1)
+            }
+        case "outfit_plaid":
+            return UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.80, green: 0.30, blue: 0.30, alpha: 1)
+                    : UIColor(red: 0.65, green: 0.20, blue: 0.20, alpha: 1)
+            }
+        case "outfit_formal":
+            return UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.20, green: 0.20, blue: 0.55, alpha: 1)
+                    : UIColor(red: 0.10, green: 0.10, blue: 0.35, alpha: 1)
+            }
+        default:
+            return UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.55, green: 0.32, blue: 0.14, alpha: 1)
+                    : UIColor(red: 0.36, green: 0.20, blue: 0.09, alpha: 1)
+            }
         }
     }
 

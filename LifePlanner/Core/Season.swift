@@ -39,12 +39,35 @@ enum Season: CaseIterable {
     // MARK: - Scene tint
 
     /// Sky / ground background color used by FarmScene.
+    /// Returns a dynamic color that adapts between light and dark mode so the
+    /// farm remains legible without the SpriteKit scene washing out in dark
+    /// environments.
     var backgroundColor: UIColor {
         switch self {
-        case .spring: return UIColor(red: 0.62, green: 0.82, blue: 0.45, alpha: 1.0) // green meadow
-        case .summer: return UIColor(red: 0.52, green: 0.78, blue: 0.30, alpha: 1.0) // deeper green
-        case .fall:   return UIColor(red: 0.72, green: 0.62, blue: 0.30, alpha: 1.0) // warm amber
-        case .winter: return UIColor(red: 0.72, green: 0.80, blue: 0.90, alpha: 1.0) // pale blue-grey
+        case .spring:
+            return UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.10, green: 0.22, blue: 0.08, alpha: 1.0)
+                    : UIColor(red: 0.62, green: 0.82, blue: 0.45, alpha: 1.0)
+            }
+        case .summer:
+            return UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.07, green: 0.20, blue: 0.04, alpha: 1.0)
+                    : UIColor(red: 0.52, green: 0.78, blue: 0.30, alpha: 1.0)
+            }
+        case .fall:
+            return UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.18, green: 0.13, blue: 0.04, alpha: 1.0)
+                    : UIColor(red: 0.72, green: 0.62, blue: 0.30, alpha: 1.0)
+            }
+        case .winter:
+            return UIColor { trait in
+                trait.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.08, green: 0.10, blue: 0.18, alpha: 1.0)
+                    : UIColor(red: 0.72, green: 0.80, blue: 0.90, alpha: 1.0)
+            }
         }
     }
 }

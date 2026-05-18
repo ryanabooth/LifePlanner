@@ -67,7 +67,7 @@ final class FarmScene: SKScene {
 
     override func didMove(to view: SKView) {
         super.didMove(to: view)
-        backgroundColor = SKColor(red: 0.62, green: 0.82, blue: 0.45, alpha: 1.0)
+        backgroundColor = Season.current().backgroundColor
         scaleMode = .resizeFill
         // didMove fires after init; nodes might already have parents if the
         // scene is reused. Guard with parent checks so we don't double-add.
