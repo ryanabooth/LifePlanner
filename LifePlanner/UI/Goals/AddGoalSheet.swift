@@ -18,7 +18,8 @@ struct AddGoalSheet: View {
     private let isEditing: Bool
     private let onSave: (GoalDraft) -> Void
 
-    init(existing: DBModel.Goal? = nil, onSave: @escaping (GoalDraft) -> Void) {
+    /// Edit an existing goal, or create a new one (optionally pre-filled from a template).
+    init(existing: DBModel.Goal? = nil, prefilledDraft: GoalDraft? = nil, onSave: @escaping (GoalDraft) -> Void) {
         if let existing {
             _draft = State(initialValue: GoalDraft(
                 title: existing.title,
@@ -32,6 +33,11 @@ struct AddGoalSheet: View {
             _includeTargetDate = State(initialValue: existing.targetDate != nil)
             _includeMetric = State(initialValue: existing.hasMetric)
             isEditing = true
+        } else if let prefilled = prefilledDraft {
+            _draft = State(initialValue: prefilled)
+            _includeTargetDate = State(initialValue: prefilled.targetDate != nil)
+            _includeMetric = State(initialValue: !(prefilled.metricUnit ?? "").isEmpty)
+            isEditing = false
         } else {
             _draft = State(initialValue: GoalDraft())
             _includeTargetDate = State(initialValue: false)
@@ -112,6 +118,21 @@ struct AddGoalSheet: View {
                     }
                 }
 
+                if !draft.subGoalTitles.isEmpty {
+                    Section {
+                        ForEach(draft.subGoalTitles.indices, id: \.self) { i in
+                            Text(draft.subGoalTitles[i])
+                        }
+                        .onDelete { indexSet in
+                            draft.subGoalTitles.remove(atOffsets: indexSet)
+                        }
+                    } header: {
+                        Text("Sub-goals")
+                    } footer: {
+                        Text("Swipe to remove. Add more from the goal detail view after saving.")
+                            .font(.footnote)
+                    }
+                }
                 Section("Status") {
                     Picker("Status", selection: $draft.status) {
                         ForEach(GoalStatus.allCases) { Text($0.label).tag($0) }
