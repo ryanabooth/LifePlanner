@@ -27,6 +27,30 @@ struct WeatherHUDPill: View {
     }
 }
 
+// MARK: - Season pill
+
+/// Non-interactive pill showing the current calendar season alongside the
+/// weather pill. Purely decorative — no tap action, no modifiers to explain.
+struct SeasonHUDPill: View {
+    let season: Season
+
+    var body: some View {
+        HStack(spacing: 5) {
+            Text(season.emoji)
+                .font(.system(size: 14))
+            Text(season.label)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(.ultraThinMaterial, in: Capsule())
+        .accessibilityLabel("Current season: \(season.label)")
+    }
+}
+
+// MARK: - Weather explainer
+
 /// Full explainer sheet shown when the HUD pill is tapped.
 struct WeatherExplainerSheet: View {
 
