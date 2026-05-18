@@ -1546,13 +1546,14 @@ final class LifePlannerTests: XCTestCase {
         let context = try makeFarmContext()
         let economy = RealEconomyInteractor()
         let tools = RealToolInteractor(economy: economy)
+        let farm = RealFarmInteractor(economy: economy)
 
-        // Bootstrap economy so gold exists.
-        economy.bootstrap(in: context)
-        economy.credit(200, reason: "seed", in: context)   // now 300g total (100 seed + 200)
+        // Bootstrap seeds 100g; credit 200 more → 300g total.
+        farm.bootstrap(in: context)
+        economy.credit(200, reason: "seed", in: context)
 
         let watering = ToolCatalog.all.first { $0.slug == "watering_can_ii" }!
-        try tools.purchase(watering, in: context)
+        try tools.purchase(slug: watering.slug, in: context)
 
         let state = try context.fetch(FetchDescriptor<DBModel.FarmState>()).first!
         XCTAssertEqual(state.gold, 300 - watering.goldCost)   // 225g
@@ -1567,13 +1568,14 @@ final class LifePlannerTests: XCTestCase {
         let context = try makeFarmContext()
         let economy = RealEconomyInteractor()
         let tools = RealToolInteractor(economy: economy)
+        let farm = RealFarmInteractor(economy: economy)
 
-        economy.bootstrap(in: context)
+        farm.bootstrap(in: context)
         economy.credit(200, reason: "seed", in: context)
 
         let watering = ToolCatalog.all.first { $0.slug == "watering_can_ii" }!
-        try tools.purchase(watering, in: context)
-        XCTAssertThrowsError(try tools.purchase(watering, in: context))
+        try tools.purchase(slug: watering.slug, in: context)
+        XCTAssertThrowsError(try tools.purchase(slug: watering.slug, in: context))
     }
 
     @MainActor
@@ -1581,14 +1583,15 @@ final class LifePlannerTests: XCTestCase {
         let context = try makeFarmContext()
         let economy = RealEconomyInteractor()
         let tools = RealToolInteractor(economy: economy)
+        let farm = RealFarmInteractor(economy: economy)
 
-        economy.bootstrap(in: context)
+        farm.bootstrap(in: context)
         economy.credit(500, reason: "seed", in: context)
 
         let t1 = ToolCatalog.all.first { $0.slug == "watering_can_ii" }!
         let t2 = ToolCatalog.all.first { $0.slug == "watering_can_iii" }!
-        try tools.purchase(t1, in: context)
-        try tools.purchase(t2, in: context)
+        try tools.purchase(slug: t1.slug, in: context)
+        try tools.purchase(slug: t2.slug, in: context)
 
         let bonus = tools.habitBonus(in: context)
         XCTAssertEqual(bonus, t1.habitBonus + t2.habitBonus)
@@ -1601,12 +1604,11 @@ final class LifePlannerTests: XCTestCase {
         let tools = RealToolInteractor(economy: economy)
         let farm = RealFarmInteractor(economy: economy, tools: tools)
 
-        economy.bootstrap(in: context)
-        economy.credit(200, reason: "seed", in: context)
         farm.bootstrap(in: context)
+        economy.credit(200, reason: "seed", in: context)
 
         let watering = ToolCatalog.all.first { $0.slug == "watering_can_ii" }!
-        try tools.purchase(watering, in: context)
+        try tools.purchase(slug: watering.slug, in: context)
 
         let goal = DBModel.Goal(title: "Run", targetDate: Date())
         context.insert(goal)
@@ -1631,12 +1633,11 @@ final class LifePlannerTests: XCTestCase {
         let tools = RealToolInteractor(economy: economy)
         let farm = RealFarmInteractor(economy: economy, tools: tools)
 
-        economy.bootstrap(in: context)
-        economy.credit(200, reason: "seed", in: context)
         farm.bootstrap(in: context)
+        economy.credit(200, reason: "seed", in: context)
 
         let hoe = ToolCatalog.all.first { $0.slug == "sharper_hoe_ii" }!
-        try tools.purchase(hoe, in: context)
+        try tools.purchase(slug: hoe.slug, in: context)
 
         let goal = DBModel.Goal(title: "Study", targetDate: Date())
         context.insert(goal)
