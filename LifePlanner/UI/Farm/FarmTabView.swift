@@ -3,10 +3,18 @@ import SwiftData
 import SpriteKit
 import Combine
 
+private enum FarmDestination: Hashable {
+    case plotDetail(UUID)
+    case questLog
+    case capacityUpgrade
+    case cosmeticShop
+    case workshop
+}
+
 /// SwiftUI host for the SpriteKit farm scene. Watches `FarmPlot` and
 /// `FarmState` with `@Query`; pushes snapshots into the scene whenever the
-/// reactive results change. Hosts the SwiftUI overlay buttons + sheet
-/// presentations on top of the scene.
+/// reactive results change. Hosts the SwiftUI overlay buttons + nav
+/// destinations on top of the scene.
 struct FarmTabView: View {
 
     @Environment(\.injected) private var injected: DIContainer
@@ -25,11 +33,7 @@ struct FarmTabView: View {
         return s
     }()
 
-    @State private var navigationPath: [UUID] = []
-    @State private var showQuestLog = false
-    @State private var showCapacityUpgrade = false
-    @State private var showCosmeticShop = false
-    @State private var showWorkshop = false
+    @State private var navigationPath: [FarmDestination] = []
     @State private var showAddMenu = false
     @State private var showWeatherExplainer = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -69,7 +73,7 @@ struct FarmTabView: View {
                         scene.bottomSafeAreaInset = newInset + 20
                     }
                     .onReceive(scene.tappedPlotID) { id in
-                        navigationPath.append(id)
+                        navigationPath.append(.plotDetail(id))
                     }
                     .onReceive(scene.tappedFarmhouse) { _ in
                         showDevMenu = true
@@ -90,26 +94,19 @@ struct FarmTabView: View {
             .overlay(alignment: .bottomTrailing) {
                 addFAB
                     .padding(.trailing, 20)
-                    .padding(.bottom, proxy.safeAreaInsets.bottom + 8)
+                    .padding(.bottom, 8)
             }
         }
-        .toolbar(.hidden, for: .tabBar)
-        .navigationDestination(for: UUID.self) { plotID in
-            PlotDetailView(plotID: plotID)
+        .navigationDestination(for: FarmDestination.self) { destination in
+            switch destination {
+            case .plotDetail(let id):   PlotDetailView(plotID: id)
+            case .questLog:             QuestLogView()
+            case .capacityUpgrade:      CapacityUpgradeSheet()
+            case .cosmeticShop:         CosmeticShopView()
+            case .workshop:             WorkshopView()
+            }
         }
         } // NavigationStack
-        .sheet(isPresented: $showQuestLog) {
-            QuestLogView()
-        }
-        .sheet(isPresented: $showCapacityUpgrade) {
-            CapacityUpgradeSheet()
-        }
-        .sheet(isPresented: $showCosmeticShop) {
-            CosmeticShopView()
-        }
-        .sheet(isPresented: $showWorkshop) {
-            WorkshopView()
-        }
         .sheet(isPresented: $showAddTask) {
             AddTaskSheet { draft in
                 injected.interactors.tasks.add(draft, in: modelContext)
@@ -137,7 +134,7 @@ struct FarmTabView: View {
         VStack(spacing: 10) {
             Button {
                 HapticPlayer.shared.tap()
-                showQuestLog = true
+                navigationPath.append(.questLog)
             } label: {
                 Image(systemName: "scroll")
                     .font(.title3)
@@ -148,7 +145,7 @@ struct FarmTabView: View {
 
             Button {
                 HapticPlayer.shared.tap()
-                showCapacityUpgrade = true
+                navigationPath.append(.capacityUpgrade)
             } label: {
                 Image(systemName: "plus.square.dashed")
                     .font(.title3)
@@ -159,7 +156,7 @@ struct FarmTabView: View {
 
             Button {
                 HapticPlayer.shared.tap()
-                showCosmeticShop = true
+                navigationPath.append(.cosmeticShop)
             } label: {
                 Image(systemName: "tshirt")
                     .font(.title3)
@@ -170,7 +167,7 @@ struct FarmTabView: View {
 
             Button {
                 HapticPlayer.shared.tap()
-                showWorkshop = true
+                navigationPath.append(.workshop)
             } label: {
                 Image(systemName: "hammer")
                     .font(.title3)

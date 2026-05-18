@@ -48,7 +48,6 @@ struct PlotDetailView: View {
         }
         .navigationTitle(plot?.goal?.title ?? "Common Field")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.visible, for: .tabBar)
         .toolbar {
             if plot?.goal != nil {
                 ToolbarItem(placement: .topBarLeading) {

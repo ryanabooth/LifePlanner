@@ -7,7 +7,6 @@ struct WorkshopView: View {
 
     @Environment(\.injected) private var injected
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
 
     @Query(sort: [SortDescriptor(\DBModel.OwnedTool.purchasedAt)])
     private var ownedTools: [DBModel.OwnedTool]
@@ -20,23 +19,16 @@ struct WorkshopView: View {
     private var gold: Int { farmStates.first?.gold ?? 0 }
 
     var body: some View {
-        NavigationStack {
-            List {
-                goldSection
-                toolsSection
-            }
-            .navigationTitle("Workshop")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-            .alert("Purchase failed", isPresented: $showError, presenting: errorMessage) { _ in
-                Button("OK") {}
-            } message: { msg in
-                Text(msg)
-            }
+        List {
+            goldSection
+            toolsSection
+        }
+        .navigationTitle("Workshop")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("Purchase failed", isPresented: $showError, presenting: errorMessage) { _ in
+            Button("OK") {}
+        } message: { msg in
+            Text(msg)
         }
     }
 

@@ -5,7 +5,6 @@ struct CosmeticShopView: View {
 
     @Environment(\.injected) private var injected: DIContainer
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
 
     @Query private var ownedCosmetics: [DBModel.OwnedCosmetic]
     @Query private var farmStates: [DBModel.FarmState]
@@ -16,56 +15,49 @@ struct CosmeticShopView: View {
     private var gold: Int { farmStates.first?.gold ?? 0 }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                HStack {
-                    Text("🪙 \(gold) gold")
-                        .font(.headline)
-                    Spacer()
-                }
-                .padding(.horizontal)
-                .padding(.vertical, 10)
-                .background(Color(.systemGroupedBackground))
+        VStack(spacing: 0) {
+            HStack {
+                Text("🪙 \(gold) gold")
+                    .font(.headline)
+                Spacer()
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 10)
+            .background(Color(.systemGroupedBackground))
 
-                Picker("Category", selection: $selectedKind) {
-                    ForEach(CosmeticKind.allCases) { kind in
-                        Text(kind.pickerLabel).tag(kind)
-                    }
+            Picker("Category", selection: $selectedKind) {
+                ForEach(CosmeticKind.allCases) { kind in
+                    Text(kind.pickerLabel).tag(kind)
                 }
-                .pickerStyle(.segmented)
-                .padding()
+            }
+            .pickerStyle(.segmented)
+            .padding()
 
-                List {
-                    ForEach(CosmeticCatalog.all.filter { $0.kind == selectedKind }) { item in
-                        CosmeticRow(
-                            item: item,
-                            owned: ownedCosmetics.first { $0.slug == item.slug },
-                            gold: gold,
-                            onPurchase: { purchase(item) },
-                            onEquip: { toggle(item) }
-                        )
-                    }
-                }
-                .listStyle(.plain)
-            }
-            .navigationTitle("Cosmetic Shop")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+            List {
+                ForEach(CosmeticCatalog.all.filter { $0.kind == selectedKind }) { item in
+                    CosmeticRow(
+                        item: item,
+                        owned: ownedCosmetics.first { $0.slug == item.slug },
+                        gold: gold,
+                        onPurchase: { purchase(item) },
+                        onEquip: { toggle(item) }
+                    )
                 }
             }
-            .alert(
-                "Can't purchase",
-                isPresented: Binding(
-                    get: { purchaseError != nil },
-                    set: { if !$0 { purchaseError = nil } }
-                )
-            ) {
-                Button("OK") { purchaseError = nil }
-            } message: {
-                Text(purchaseError ?? "")
-            }
+            .listStyle(.plain)
+        }
+        .navigationTitle("Cosmetic Shop")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert(
+            "Can't purchase",
+            isPresented: Binding(
+                get: { purchaseError != nil },
+                set: { if !$0 { purchaseError = nil } }
+            )
+        ) {
+            Button("OK") { purchaseError = nil }
+        } message: {
+            Text(purchaseError ?? "")
         }
     }
 
