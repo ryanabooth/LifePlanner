@@ -25,7 +25,7 @@ struct FarmTabView: View {
         return s
     }()
 
-    @State private var presentedPlot: PresentedPlot?
+    @State private var navigationPath: [UUID] = []
     @State private var showQuestLog = false
     @State private var showCapacityUpgrade = false
     @State private var showCosmeticShop = false
@@ -48,6 +48,7 @@ struct FarmTabView: View {
     private var currentSeason: Season { Season.current() }
 
     var body: some View {
+        NavigationStack(path: $navigationPath) {
         GeometryReader { proxy in
             ZStack(alignment: .topTrailing) {
                 SpriteView(scene: scene)
@@ -68,7 +69,7 @@ struct FarmTabView: View {
                         scene.bottomSafeAreaInset = newInset + 20
                     }
                     .onReceive(scene.tappedPlotID) { id in
-                        presentedPlot = PresentedPlot(id: id)
+                        navigationPath.append(id)
                     }
                     .onReceive(scene.tappedFarmhouse) { _ in
                         showDevMenu = true
@@ -92,9 +93,11 @@ struct FarmTabView: View {
                     .padding(.bottom, proxy.safeAreaInsets.bottom + 8)
             }
         }
-        .sheet(item: $presentedPlot) { item in
-            PlotDetailSheet(plotID: item.id)
+        .toolbar(.hidden, for: .tabBar)
+        .navigationDestination(for: UUID.self) { plotID in
+            PlotDetailView(plotID: plotID)
         }
+        } // NavigationStack
         .sheet(isPresented: $showQuestLog) {
             QuestLogView()
         }
@@ -128,7 +131,6 @@ struct FarmTabView: View {
         .sheet(isPresented: $showWeatherExplainer) {
             WeatherExplainerSheet(event: activeWeather)
         }
-        .toolbar(.hidden, for: .tabBar)
     }
 
     private var overlayButtons: some View {
@@ -279,11 +281,6 @@ struct FarmTabView: View {
             equippedDecorSlug:  equipped(.farmhouseDecor)
         )
     }
-}
-
-/// Wrapper so we can use `.sheet(item:)` — UUID isn't Identifiable.
-private struct PresentedPlot: Identifiable {
-    let id: UUID
 }
 
 #Preview {
