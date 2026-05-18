@@ -134,6 +134,7 @@ struct FarmTabView: View {
     private var overlayButtons: some View {
         VStack(spacing: 10) {
             Button {
+                HapticPlayer.shared.tap()
                 showQuestLog = true
             } label: {
                 Image(systemName: "scroll")
@@ -144,6 +145,7 @@ struct FarmTabView: View {
             .accessibilityLabel("Quest Log")
 
             Button {
+                HapticPlayer.shared.tap()
                 showCapacityUpgrade = true
             } label: {
                 Image(systemName: "plus.square.dashed")
@@ -154,6 +156,7 @@ struct FarmTabView: View {
             .accessibilityLabel("Expand Farm")
 
             Button {
+                HapticPlayer.shared.tap()
                 showCosmeticShop = true
             } label: {
                 Image(systemName: "tshirt")
@@ -164,6 +167,7 @@ struct FarmTabView: View {
             .accessibilityLabel("Cosmetic Shop")
 
             Button {
+                HapticPlayer.shared.tap()
                 showWorkshop = true
             } label: {
                 Image(systemName: "hammer")
@@ -191,6 +195,7 @@ struct FarmTabView: View {
             }
 
             Button {
+                HapticPlayer.shared.tap()
                 withAnimation(reduceMotion ? nil : .spring(duration: 0.25)) {
                     showAddMenu.toggle()
                 }

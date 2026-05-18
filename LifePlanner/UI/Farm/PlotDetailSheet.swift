@@ -129,6 +129,7 @@ struct PlotDetailSheet: View {
             } else {
                 ForEach(linked) { task in
                     Button {
+                        if !task.isDone { HapticPlayer.shared.crescendo() }
                         injected.interactors.tasks.toggleDone(task, in: modelContext)
                     } label: {
                         HStack {
@@ -157,6 +158,7 @@ struct PlotDetailSheet: View {
             } else {
                 ForEach(linked) { habit in
                     Button {
+                        if !habit.isDone(on: Date()) { HapticPlayer.shared.crescendo() }
                         injected.interactors.habits.toggleDone(habit, on: Date(), in: modelContext)
                     } label: {
                         HStack {

@@ -115,6 +115,7 @@ private struct TaskListContent: View {
             .onTapGesture { onEdit(task) }
             .swipeActions(edge: .leading) {
                 Button {
+                    if !task.isDone { HapticPlayer.shared.crescendo() }
                     injected.interactors.tasks.toggleDone(task, in: modelContext)
                 } label: {
                     Label(task.isDone ? "Reopen" : "Done",

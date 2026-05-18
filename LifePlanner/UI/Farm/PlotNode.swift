@@ -183,6 +183,7 @@ final class PlotNode: SKNode {
 
     private func playContributionPulse() {
         Task { @MainActor in SoundPlayer.shared.play(.contribution) }
+        Task { @MainActor in HapticPlayer.shared.tap() }
         guard !UIAccessibility.isReduceMotionEnabled else { return }
 
         let up   = SKAction.scale(to: 1.12, duration: 0.10)
