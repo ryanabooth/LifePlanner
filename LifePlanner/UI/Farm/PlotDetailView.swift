@@ -52,7 +52,7 @@ struct PlotDetailView: View {
         .toolbar {
             if plot?.goal != nil {
                 ToolbarItem(placement: .topBarLeading) {
-                    Button("Edit Goal") { showEditGoal = true }
+                    Button("Edit") { showEditGoal = true }
                 }
             }
         }
