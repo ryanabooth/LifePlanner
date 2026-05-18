@@ -99,7 +99,7 @@ private struct ToolRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(tool.emoji)
-                .font(.system(size: 32))
+                .font(.largeTitle)
                 .frame(width: 44)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -144,6 +144,21 @@ private struct ToolRow: View {
         .padding(.vertical, 4)
         .opacity(isOwned ? 0.7 : 1.0)
         .accessibilityElement(children: .combine)
+        .accessibilityLabel(rowAccessibilityLabel)
+    }
+
+    private var rowAccessibilityLabel: String {
+        var parts = [tool.name, tool.description]
+        if tool.habitBonus > 0 { parts.append("plus \(tool.habitBonus) habit bonus") }
+        else if tool.taskBonus > 0 { parts.append("plus \(tool.taskBonus) task bonus") }
+        if isOwned {
+            parts.append("owned")
+        } else {
+            parts.append(canAfford
+                ? "costs \(tool.goldCost) gold"
+                : "costs \(tool.goldCost) gold, not enough gold")
+        }
+        return parts.joined(separator: ", ")
     }
 
     @ViewBuilder
