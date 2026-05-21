@@ -249,10 +249,18 @@ final class RealQuestInteractor: QuestInteractor {
 
     func expireOldQuests(on day: Date, in context: ModelContext) {
         let today = calendar.startOfDay(for: day)
+        let thisWeekStart = weekStart(for: day)
         let all = (try? context.fetch(FetchDescriptor<DBModel.Quest>())) ?? []
-        for quest in all where quest.state == .active && quest.day < today {
-            quest.state = .expired
-            quest.updatedAt = Date()
+        for quest in all where quest.state == .active {
+            // Weekly quests stay active for the whole ISO week; daily quests
+            // expire once their day has passed.
+            let stale = quest.kind == .weeklyHarvest
+                ? quest.day < thisWeekStart
+                : quest.day < today
+            if stale {
+                quest.state = .expired
+                quest.updatedAt = Date()
+            }
         }
     }
 

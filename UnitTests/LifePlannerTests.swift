@@ -508,6 +508,30 @@ final class LifePlannerTests: XCTestCase {
     }
 
     @MainActor
+    func test_quests_weeklyQuestNotExpiredMidWeek() throws {
+        let context = try makeFarmContext()
+        let farm = RealFarmInteractor()
+        farm.bootstrap(in: context)
+        let quests = RealQuestInteractor(rng: { 0 })
+
+        let cal = Calendar.current
+        // Roll the weekly quest at the start of this ISO week.
+        let comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
+        let weekStart = cal.date(from: comps)!
+        let weekly = try XCTUnwrap(quests.rollWeekly(on: weekStart, in: context))
+
+        // Two days later, still within the same week — must remain active.
+        let midWeek = cal.date(byAdding: .day, value: 2, to: weekStart)!
+        quests.expireOldQuests(on: midWeek, in: context)
+        XCTAssertEqual(weekly.state, .active)
+
+        // Next week — now it should expire.
+        let nextWeek = cal.date(byAdding: .weekOfYear, value: 1, to: weekStart)!
+        quests.expireOldQuests(on: nextWeek, in: context)
+        XCTAssertEqual(weekly.state, .expired)
+    }
+
+    @MainActor
     func test_farm_replantRequiresDeadPlotAndCostsGold() throws {
         let context = try makeFarmContext()
         let economy = RealEconomyInteractor()
