@@ -24,7 +24,9 @@ Always run the full `build test` after touching models, interactors, or anything
 
 ## Branching workflow
 
-Never commit directly to `main`. Every change — feature, fix, doc tweak — gets its own branch (`feature/<name>`, `fix/<name>`, `docs/<name>`, `infra/<name>`), pushed, and lands via a PR with **Summary + Test plan** sections. Use `gh pr create` + `gh pr merge --merge`.
+Every change — feature, fix, doc tweak — gets its own branch (`feature/<name>`, `fix/<name>`, `docs/<name>`, `infra/<name>`), pushed, and lands via a PR with **Summary + Test plan** sections. Use `gh pr create` + `gh pr merge --merge`.
+
+**Exception: version/build bumps** produced by `scripts/testflight.sh` may be committed directly to `main` — no PR needed.
 
 ## Architecture
 
