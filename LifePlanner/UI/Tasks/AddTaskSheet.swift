@@ -54,6 +54,16 @@ struct AddTaskSheet: View {
                     ), axis: .vertical)
                     .lineLimit(3...6)
                 }
+                if !linkableGoals.isEmpty {
+                    Section("Goal") {
+                        Picker("Link to goal", selection: $draft.linkedGoalID) {
+                            Text("None").tag(UUID?.none)
+                            ForEach(linkableGoals) { goal in
+                                Text(goal.title).tag(UUID?.some(goal.id))
+                            }
+                        }
+                    }
+                }
                 Section {
                     Toggle("Due date", isOn: $includeDueDate)
                     if includeDueDate {
@@ -88,16 +98,6 @@ struct AddTaskSheet: View {
                         }
                     }
                     .pickerStyle(.segmented)
-                }
-                if !linkableGoals.isEmpty {
-                    Section("Goal") {
-                        Picker("Link to goal", selection: $draft.linkedGoalID) {
-                            Text("None").tag(UUID?.none)
-                            ForEach(linkableGoals) { goal in
-                                Text(goal.title).tag(UUID?.some(goal.id))
-                            }
-                        }
-                    }
                 }
             }
             .navigationTitle(isEditing ? "Edit Task" : "New Task")
