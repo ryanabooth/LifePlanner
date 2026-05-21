@@ -50,7 +50,7 @@ struct PlotDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if plot?.goal != nil {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button("Edit") { showEditGoal = true }
                 }
             }
@@ -70,8 +70,8 @@ struct PlotDetailView: View {
             statsSection(plot: plot)
 
             if let goal = plot.goal {
-                tasksSection(goal: goal)
                 habitsSection(goal: goal)
+                tasksSection(goal: goal)
             } else {
                 Section {
                     Text("The common field is fed by any habit or task you complete that isn't linked to a goal.")
