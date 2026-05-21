@@ -21,7 +21,6 @@ struct GoalDetailView: View {
     @State private var showingEdit = false
     @State private var showingTaskPicker = false
     @State private var showingHabitPicker = false
-    @State private var newSubGoalTitle = ""
     @State private var showLogMetric = false
     @State private var logAmount: Double = 1
 
@@ -58,8 +57,6 @@ struct GoalDetailView: View {
             if goal.hasMetric {
                 metricSection
             }
-
-            subGoalsSection
 
             Section {
                 let linked = goal.linkedHabits ?? []
@@ -168,64 +165,6 @@ struct GoalDetailView: View {
 
     // MARK: - Sections
 
-    private var subGoalsSection: some View {
-        let subs = (goal.subGoals ?? []).sorted { $0.order < $1.order }
-        let doneCount = subs.filter(\.isDone).count
-        return Section {
-            if subs.isEmpty {
-                Text("No sub-goals yet.")
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(subs) { sub in
-                    HStack {
-                        Button {
-                            injected.interactors.goals.toggleSubGoal(sub, in: modelContext)
-                        } label: {
-                            Image(systemName: sub.isDone ? "checkmark.circle.fill" : "circle")
-                                .foregroundStyle(sub.isDone ? .green : .secondary)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.borderless)
-                        .accessibilityLabel(sub.isDone ? "Reopen \(sub.title)" : "Complete \(sub.title)")
-                        Text(sub.title)
-                            .strikethrough(sub.isDone)
-                            .foregroundStyle(sub.isDone ? .secondary : .primary)
-                            .accessibilityHidden(true)
-                    }
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) {
-                            injected.interactors.goals.deleteSubGoal(sub, in: modelContext)
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                    }
-                }
-            }
-            HStack {
-                TextField("Add a sub-goal", text: $newSubGoalTitle)
-                    .submitLabel(.done)
-                    .onSubmit(commitSubGoal)
-                Button(action: commitSubGoal) {
-                    Image(systemName: "plus.circle.fill")
-                        .foregroundStyle(.tint)
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel("Add sub-goal")
-                .disabled(newSubGoalTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-            }
-        } header: {
-            HStack {
-                Text("Sub-goals")
-                if !subs.isEmpty {
-                    Spacer()
-                    Text("\(doneCount) / \(subs.count)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-    }
-
     private var metricSection: some View {
         Section {
             VStack(alignment: .leading, spacing: 6) {
@@ -258,13 +197,6 @@ struct GoalDetailView: View {
         } header: {
             Text("Progress")
         }
-    }
-
-    private func commitSubGoal() {
-        let trimmed = newSubGoalTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        injected.interactors.goals.addSubGoal(trimmed, to: goal, in: modelContext)
-        newSubGoalTitle = ""
     }
 
     private func formattedValue(_ v: Double) -> String {

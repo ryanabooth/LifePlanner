@@ -54,9 +54,6 @@ extension DBModel {
         @Relationship(inverse: \DBModel.Habit.goals)
         var linkedHabits: [DBModel.Habit]? = []
 
-        @Relationship(deleteRule: .cascade, inverse: \DBModel.SubGoal.goal)
-        var subGoals: [DBModel.SubGoal]? = []
-
         /// The farm plot allocated for this goal. Cascade-deleted when the goal is removed.
         /// `nil` until `FarmInteractor.bindPlot(to:)` allocates one.
         /// Inverse is declared on `FarmPlot.goal`.
@@ -95,38 +92,6 @@ extension DBModel {
         var metricProgress: Double {
             guard metricTarget > 0 else { return 0 }
             return min(1.0, metricValue / metricTarget)
-        }
-    }
-
-    /// A single ordered sub-goal under a parent `Goal`. Checking one off pumps
-    /// health into the parent's plot (same magnitude as a task completion).
-    @Model
-    final class SubGoal {
-        var id: UUID = UUID()
-        var title: String = ""
-        var isDone: Bool = false
-        /// Display order within the parent. Ascending. Renumbered on reorder.
-        var order: Int = 0
-        var goal: DBModel.Goal? = nil
-        var createdAt: Date = Date()
-        var updatedAt: Date = Date()
-
-        init(
-            id: UUID = UUID(),
-            title: String = "",
-            isDone: Bool = false,
-            order: Int = 0,
-            goal: DBModel.Goal? = nil,
-            createdAt: Date = Date(),
-            updatedAt: Date = Date()
-        ) {
-            self.id = id
-            self.title = title
-            self.isDone = isDone
-            self.order = order
-            self.goal = goal
-            self.createdAt = createdAt
-            self.updatedAt = updatedAt
         }
     }
 }

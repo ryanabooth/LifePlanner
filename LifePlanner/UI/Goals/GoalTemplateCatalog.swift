@@ -8,7 +8,6 @@ struct GoalTemplate: Identifiable {
     let title: String
     let metricUnit: String?
     let metricTarget: Double
-    let subGoalTitles: [String]
     let farmElementType: FarmElementType
 
     /// Short summary for the picker row.
@@ -23,9 +22,6 @@ struct GoalTemplate: Identifiable {
                 parts.append("Track: \(unit)")
             }
         }
-        if !subGoalTitles.isEmpty {
-            parts.append("\(subGoalTitles.count) sub-goals")
-        }
         return parts.isEmpty ? "Habit-anchored" : parts.joined(separator: " · ")
     }
 }
@@ -39,14 +35,6 @@ enum GoalTemplateCatalog {
             title: "Run a 5K",
             metricUnit: "miles",
             metricTarget: 100,
-            subGoalTitles: [
-                "Week 1: Walk/run 1 mile",  "Week 2: Run 1.5 miles",
-                "Week 3: Run 2 miles",      "Week 4: Run 2.5 miles",
-                "Week 5: Run 3 miles",      "Week 6: Run 3.5 miles",
-                "Week 7: Run 4 miles",      "Week 8: Run 4.5 miles",
-                "Week 9: Race-ready",       "Week 10: Run first 5K",
-                "Week 11: Beat your time",  "Week 12: Celebrate 🏅",
-            ],
             farmElementType: .crop
         ),
         GoalTemplate(
@@ -54,7 +42,6 @@ enum GoalTemplateCatalog {
             title: "Read 12 books this year",
             metricUnit: "books",
             metricTarget: 12,
-            subGoalTitles: (1...12).map { "Book \($0)" },
             farmElementType: .tree
         ),
         GoalTemplate(
@@ -62,7 +49,6 @@ enum GoalTemplateCatalog {
             title: "Save $5,000",
             metricUnit: "dollars",
             metricTarget: 5000,
-            subGoalTitles: [],
             farmElementType: .crop
         ),
         GoalTemplate(
@@ -70,7 +56,6 @@ enum GoalTemplateCatalog {
             title: "Build a gym habit",
             metricUnit: nil,
             metricTarget: 0,
-            subGoalTitles: [],
             farmElementType: .crop
         ),
         GoalTemplate(
@@ -78,7 +63,6 @@ enum GoalTemplateCatalog {
             title: "Daily meditation",
             metricUnit: nil,
             metricTarget: 0,
-            subGoalTitles: [],
             farmElementType: .crop
         ),
         GoalTemplate(
@@ -86,12 +70,6 @@ enum GoalTemplateCatalog {
             title: "Write a book",
             metricUnit: "words",
             metricTarget: 80000,
-            subGoalTitles: [
-                "Outline & premise",  "Chapters 1–3",  "Chapters 4–6",
-                "Chapters 7–9",       "Chapters 10–12", "Chapters 13–15",
-                "Chapters 16–18",     "Chapters 19–21", "Chapters 22–24",
-                "First draft done",   "Revise & edit",  "Final draft",
-            ],
             farmElementType: .tree
         ),
         GoalTemplate(
@@ -99,7 +77,6 @@ enum GoalTemplateCatalog {
             title: "Learn a language",
             metricUnit: "hours",
             metricTarget: 100,
-            subGoalTitles: [],
             farmElementType: .crop
         ),
         GoalTemplate(
@@ -107,7 +84,6 @@ enum GoalTemplateCatalog {
             title: "Daily sketch",
             metricUnit: nil,
             metricTarget: 0,
-            subGoalTitles: [],
             farmElementType: .crop
         ),
     ]
@@ -121,7 +97,6 @@ extension GoalDraft {
         self.metricUnit = template.metricUnit
         self.metricTarget = template.metricTarget
         self.farmElementType = template.farmElementType
-        self.subGoalTitles = template.subGoalTitles
     }
 }
 
