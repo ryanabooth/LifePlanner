@@ -20,11 +20,7 @@ struct AddTaskSheet: View {
     private let onSave: (TaskDraft) -> Void
 
     private static var defaultDueDate: Date {
-        var comps = Calendar.current.dateComponents([.year, .month, .day], from: Date())
-        comps.day = (comps.day ?? 0) + 1
-        comps.hour = 9
-        comps.minute = 0
-        return Calendar.current.date(from: comps) ?? Date()
+        Calendar.current.startOfDay(for: Date())
     }
 
     init(existing: DBModel.Task? = nil, onSave: @escaping (TaskDraft) -> Void) {
