@@ -60,3 +60,6 @@ fastlane/app_archive
 
 # TestFlight upload secrets — never commit
 scripts/.env
+
+## Claude Code worktrees
+.claude/worktrees/
