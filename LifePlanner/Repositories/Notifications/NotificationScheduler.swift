@@ -1,9 +1,19 @@
 import Foundation
 import UserNotifications
 
+/// Lightweight description of a habit that should currently own a reminder.
+struct HabitReminderInfo: Sendable {
+    let id: UUID
+    let title: String
+    let time: Date
+}
+
 protocol NotificationScheduler: Sendable {
     func scheduleHabitReminder(habitID: UUID, title: String, time: Date) async
     func cancelHabitReminder(habitID: UUID) async
+    /// Remove any stale/orphaned habit reminders (deleted, archived, or scheduled
+    /// by an older build) and ensure each `active` habit owns exactly one reminder.
+    func reconcileHabitReminders(active: [HabitReminderInfo]) async
     func scheduleTaskDue(taskID: UUID, title: String, at fireDate: Date) async
     func cancelTaskDue(taskID: UUID) async
     /// Schedule (or replace) a next-morning alert for a plot state change.
@@ -57,6 +67,28 @@ final class RealNotificationScheduler: NotificationScheduler {
 
     func cancelHabitReminder(habitID: UUID) async {
         center.removePendingNotificationRequests(withIdentifiers: [habitReminderID(habitID)])
+    }
+
+    func reconcileHabitReminders(active: [HabitReminderInfo]) async {
+        let validIDs = Set(active.map { habitReminderID($0.id) })
+        let pending = await center.pendingNotificationRequests()
+        let stale = Self.staleHabitReminderIdentifiers(
+            pending: pending.map(\.identifier),
+            valid: validIDs
+        )
+        if !stale.isEmpty {
+            center.removePendingNotificationRequests(withIdentifiers: stale)
+        }
+        for habit in active {
+            await scheduleHabitReminder(habitID: habit.id, title: habit.title, time: habit.time)
+        }
+    }
+
+    /// Pending habit-reminder identifiers that no longer correspond to a current
+    /// habit — orphans from deletions/archives or an older identifier scheme.
+    /// Matches the legacy `habit-…` prefix as well as the current `habit-reminder-…`.
+    static func staleHabitReminderIdentifiers(pending: [String], valid: Set<String>) -> [String] {
+        pending.filter { $0.hasPrefix("habit") && !valid.contains($0) }
     }
 
     func scheduleTaskDue(taskID: UUID, title: String, at fireDate: Date) async {
@@ -190,6 +222,7 @@ final class RealNotificationScheduler: NotificationScheduler {
 final class StubNotificationScheduler: NotificationScheduler {
     func scheduleHabitReminder(habitID: UUID, title: String, time: Date) async {}
     func cancelHabitReminder(habitID: UUID) async {}
+    func reconcileHabitReminders(active: [HabitReminderInfo]) async {}
     func scheduleTaskDue(taskID: UUID, title: String, at fireDate: Date) async {}
     func cancelTaskDue(taskID: UUID) async {}
     func schedulePlotAlert(plotID: UUID, title: String, body: String, fireAt: Date) async {}
