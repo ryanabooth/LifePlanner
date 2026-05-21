@@ -25,6 +25,13 @@ struct GoalDetailView: View {
     @State private var showLogMetric = false
     @State private var logAmount: Double = 1
 
+    /// Tasks offered in the link picker: incomplete tasks, plus any already
+    /// linked to this goal so they remain selectable for unlinking.
+    private var linkableTasks: [DBModel.Task] {
+        let linkedIDs = Set((goal.linkedTasks ?? []).map(\.id))
+        return allTasks.filter { !$0.isDone || linkedIDs.contains($0.id) }
+    }
+
     var body: some View {
         Form {
             Section {
@@ -118,7 +125,7 @@ struct GoalDetailView: View {
         .sheet(isPresented: $showingTaskPicker) {
             LinkPickerView(
                 title: "Link Tasks",
-                items: allTasks,
+                items: linkableTasks,
                 initiallySelected: Set((goal.linkedTasks ?? []).map(\.id)),
                 rowLabel: { Text($0.title) }
             ) { selectedIDs in
