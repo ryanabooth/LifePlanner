@@ -19,7 +19,7 @@ struct AddHabitSheet: View {
     private let isEditing: Bool
     private let onSave: (HabitDraft) -> Void
 
-    init(existing: DBModel.Habit? = nil, onSave: @escaping (HabitDraft) -> Void) {
+    init(existing: DBModel.Habit? = nil, initialGoalID: UUID? = nil, onSave: @escaping (HabitDraft) -> Void) {
         if let existing {
             _draft = State(initialValue: HabitDraft(
                 title: existing.title,
@@ -32,7 +32,7 @@ struct AddHabitSheet: View {
             _includeReminder = State(initialValue: existing.reminderTime != nil)
             isEditing = true
         } else {
-            _draft = State(initialValue: HabitDraft())
+            _draft = State(initialValue: HabitDraft(linkedGoalID: initialGoalID))
             _includeReminder = State(initialValue: false)
             isEditing = false
         }
