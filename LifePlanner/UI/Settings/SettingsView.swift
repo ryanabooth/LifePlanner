@@ -154,7 +154,6 @@ private struct TaskExport: Encodable {
     let priority: String
     let isDone: Bool
     let completedAt: Date?
-    let tags: [String]
     let recurrence: String?
     let createdAt: Date
 
@@ -166,7 +165,6 @@ private struct TaskExport: Encodable {
         priority    = task.priority.label
         isDone      = task.isDone
         completedAt = task.completedAt
-        tags        = task.tags
         recurrence  = task.recurrence?.label
         createdAt   = task.createdAt
     }
