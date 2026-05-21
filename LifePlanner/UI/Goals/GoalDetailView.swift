@@ -55,6 +55,25 @@ struct GoalDetailView: View {
             subGoalsSection
 
             Section {
+                let linked = goal.linkedHabits ?? []
+                if linked.isEmpty {
+                    Text("No habits linked.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(linked) { habit in
+                        Text(habit.title)
+                    }
+                }
+                Button {
+                    showingHabitPicker = true
+                } label: {
+                    Label("Edit linked habits", systemImage: "repeat")
+                }
+            } header: {
+                Text("Habits")
+            }
+
+            Section {
                 let linked = goal.linkedTasks ?? []
                 if linked.isEmpty {
                     Text("No tasks linked.")
@@ -75,25 +94,6 @@ struct GoalDetailView: View {
                 }
             } header: {
                 Text("Tasks")
-            }
-
-            Section {
-                let linked = goal.linkedHabits ?? []
-                if linked.isEmpty {
-                    Text("No habits linked.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(linked) { habit in
-                        Text(habit.title)
-                    }
-                }
-                Button {
-                    showingHabitPicker = true
-                } label: {
-                    Label("Edit linked habits", systemImage: "repeat")
-                }
-            } header: {
-                Text("Habits")
             }
 
             Section {
