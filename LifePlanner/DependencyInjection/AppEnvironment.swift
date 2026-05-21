@@ -14,7 +14,8 @@ extension AppEnvironment {
     static func bootstrap() -> AppEnvironment {
         let appState = Store<AppState>(AppState())
         let modelContainer = configuredModelContainer()
-        let interactors = configuredInteractors(appState: appState)
+        let scheduler = RealNotificationScheduler()
+        let interactors = configuredInteractors(appState: appState, scheduler: scheduler)
         // Farm singletons must exist before any UI binds against them. Idempotent.
         interactors.farm.bootstrap(in: modelContainer.mainContext)
         let diContainer = DIContainer(appState: appState, interactors: interactors)
@@ -24,7 +25,8 @@ extension AppEnvironment {
             container: diContainer,
             modelContainer: modelContainer,
             deepLinksHandler: deepLinksHandler,
-            pushNotificationsHandler: pushNotificationsHandler)
+            pushNotificationsHandler: pushNotificationsHandler,
+            notificationScheduler: scheduler)
         return AppEnvironment(
             isRunningTests: ProcessInfo.processInfo.isRunningTests,
             diContainer: diContainer,
@@ -41,7 +43,8 @@ extension AppEnvironment {
     }
 
     private static func configuredInteractors(
-        appState: Store<AppState>
+        appState: Store<AppState>,
+        scheduler: NotificationScheduler
     ) -> DIContainer.Interactors {
         let userPermissions = RealUserPermissionsInteractor(
             appState: appState, openAppSettings: {
@@ -53,7 +56,6 @@ extension AppEnvironment {
         // interactors all reference the same instances so contribution routing
         // and quest auto-claim are consistent across entry points.
         let economy = RealEconomyInteractor()
-        let scheduler = RealNotificationScheduler()
         let achievementsInteractor = RealAchievementInteractor(scheduler: scheduler)
         let toolsInteractor = RealToolInteractor(economy: economy)
         let farm = RealFarmInteractor(

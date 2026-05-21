@@ -19,6 +19,10 @@ actor FakeNotificationScheduler: NotificationScheduler {
         cancelled.append(habitID)
     }
 
+    func reconcileHabitReminders(active: [HabitReminderInfo]) async {
+        for habit in active { scheduled.append((habit.id, habit.title, habit.time)) }
+    }
+
     func scheduleTaskDue(taskID: UUID, title: String, at fireDate: Date) async {
         scheduledTasks.append((taskID, title, fireDate))
     }
@@ -505,6 +509,20 @@ final class LifePlannerTests: XCTestCase {
 
         quests.expireOldQuests(on: Date(), in: context)
         XCTAssertEqual(stale.state, .expired)
+    }
+
+    func test_notifications_staleHabitReminderIdentifiers() {
+        let keepID = UUID()
+        let valid: Set<String> = ["habit-reminder-\(keepID.uuidString)"]
+        let pending = [
+            "habit-reminder-\(keepID.uuidString)",          // current, keep
+            "habit-reminder-\(UUID().uuidString)",          // orphan (deleted/archived)
+            "habit-\(UUID().uuidString)",                   // legacy scheme
+            "task-due-\(UUID().uuidString)",                // unrelated, keep
+            "plot-alert-\(UUID().uuidString)"               // unrelated, keep
+        ]
+        let stale = RealNotificationScheduler.staleHabitReminderIdentifiers(pending: pending, valid: valid)
+        XCTAssertEqual(Set(stale), Set([pending[1], pending[2]]))
     }
 
     @MainActor

@@ -15,16 +15,19 @@ struct RealSystemEventsHandler: SystemEventsHandler {
     let modelContainer: ModelContainer
     let deepLinksHandler: DeepLinksHandler
     let pushNotificationsHandler: PushNotificationsHandler
+    let notificationScheduler: NotificationScheduler
     private let cancelBag = CancelBag()
 
     init(container: DIContainer,
          modelContainer: ModelContainer,
          deepLinksHandler: DeepLinksHandler,
-         pushNotificationsHandler: PushNotificationsHandler) {
+         pushNotificationsHandler: PushNotificationsHandler,
+         notificationScheduler: NotificationScheduler) {
         self.container = container
         self.modelContainer = modelContainer
         self.deepLinksHandler = deepLinksHandler
         self.pushNotificationsHandler = pushNotificationsHandler
+        self.notificationScheduler = notificationScheduler
         installKeyboardHeightObserver()
     }
 
@@ -71,7 +74,22 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         if context.hasChanges {
             try? context.save()
         }
+        reconcileHabitReminders(in: context)
         Task.detached { await SpotlightIndexer.shared.reindexAll(in: context) }
+    }
+
+    /// Clear orphaned habit reminders (e.g. left behind by an older build) and
+    /// re-assert the current set, so a habit never ends up with duplicate alerts.
+    private func reconcileHabitReminders(in context: ModelContext) {
+        let descriptor = FetchDescriptor<DBModel.Habit>(
+            predicate: #Predicate { !$0.archived && $0.reminderTime != nil }
+        )
+        let active = ((try? context.fetch(descriptor)) ?? []).compactMap { habit -> HabitReminderInfo? in
+            guard let time = habit.reminderTime else { return nil }
+            return HabitReminderInfo(id: habit.id, title: habit.title, time: time)
+        }
+        let scheduler = notificationScheduler
+        Task.detached { await scheduler.reconcileHabitReminders(active: active) }
     }
 }
 
