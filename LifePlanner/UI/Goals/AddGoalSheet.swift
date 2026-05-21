@@ -118,21 +118,6 @@ struct AddGoalSheet: View {
                     }
                 }
 
-                if !draft.subGoalTitles.isEmpty {
-                    Section {
-                        ForEach(draft.subGoalTitles.indices, id: \.self) { i in
-                            Text(draft.subGoalTitles[i])
-                        }
-                        .onDelete { indexSet in
-                            draft.subGoalTitles.remove(atOffsets: indexSet)
-                        }
-                    } header: {
-                        Text("Sub-goals")
-                    } footer: {
-                        Text("Swipe to remove. Add more from the goal detail view after saving.")
-                            .font(.footnote)
-                    }
-                }
                 Section("Status") {
                     Picker("Status", selection: $draft.status) {
                         ForEach(GoalStatus.allCases) { Text($0.label).tag($0) }

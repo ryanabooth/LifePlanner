@@ -836,76 +836,7 @@ final class LifePlannerTests: XCTestCase {
         )
     }
 
-    // MARK: - Goal sub-goals & metrics
-
-    @MainActor
-    func test_subGoal_addAndOrder() throws {
-        let context = try makeFarmContext()
-        let farm = RealFarmInteractor()
-        farm.bootstrap(in: context)
-        let goals = RealGoalsInteractor(farm: farm)
-
-        goals.add(GoalDraft(title: "Read 12 books"), in: context)
-        let goal = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Goal>()).first)
-
-        goals.addSubGoal("Atomic Habits", to: goal, in: context)
-        goals.addSubGoal("Deep Work", to: goal, in: context)
-        goals.addSubGoal("Range", to: goal, in: context)
-
-        let subs = (goal.subGoals ?? []).sorted { $0.order < $1.order }
-        XCTAssertEqual(subs.count, 3)
-        XCTAssertEqual(subs.map(\.title), ["Atomic Habits", "Deep Work", "Range"])
-        XCTAssertEqual(subs.map(\.order), [0, 1, 2])
-    }
-
-    @MainActor
-    func test_subGoal_toggleDonePumpsPlotHealth() throws {
-        let context = try makeFarmContext()
-        let farm = RealFarmInteractor()
-        farm.bootstrap(in: context)
-        let goals = RealGoalsInteractor(farm: farm)
-
-        goals.add(GoalDraft(title: "Marathon prep", farmElementType: .crop), in: context)
-        let goal = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Goal>()).first)
-        let plot = try XCTUnwrap(goal.plot, "Goal should have a bound plot")
-        let healthBefore = plot.health
-
-        goals.addSubGoal("Run 10km", to: goal, in: context)
-        let sub = try XCTUnwrap((goal.subGoals ?? []).first)
-        goals.toggleSubGoal(sub, in: context)
-
-        XCTAssertTrue(sub.isDone)
-        XCTAssertEqual(
-            plot.health,
-            min(FarmTuning.healthMax, healthBefore + FarmTuning.taskBaseContribution),
-            "Completing a sub-goal pumps task-magnitude health into the parent's plot"
-        )
-
-        // Toggling back off does NOT refund health (consistent with task/habit).
-        let healthAfterDone = plot.health
-        goals.toggleSubGoal(sub, in: context)
-        XCTAssertFalse(sub.isDone)
-        XCTAssertEqual(plot.health, healthAfterDone, "Reverting a completion is intentionally not refunded")
-    }
-
-    @MainActor
-    func test_subGoal_delete() throws {
-        let context = try makeFarmContext()
-        let farm = RealFarmInteractor()
-        farm.bootstrap(in: context)
-        let goals = RealGoalsInteractor(farm: farm)
-
-        goals.add(GoalDraft(title: "Test goal"), in: context)
-        let goal = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Goal>()).first)
-        goals.addSubGoal("To be removed", to: goal, in: context)
-        let sub = try XCTUnwrap((goal.subGoals ?? []).first)
-
-        goals.deleteSubGoal(sub, in: context)
-        try context.save()
-
-        XCTAssertEqual((goal.subGoals ?? []).count, 0)
-        XCTAssertTrue(try context.fetch(FetchDescriptor<DBModel.SubGoal>()).isEmpty)
-    }
+    // MARK: - Goal metrics
 
     @MainActor
     func test_metric_logProgressIncrementsValueAndPumpsHealth() throws {

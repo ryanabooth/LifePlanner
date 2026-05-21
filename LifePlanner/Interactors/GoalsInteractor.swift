@@ -13,9 +13,6 @@ struct GoalDraft: Identifiable {
     var metricUnit: String? = nil
     /// 0 = open-ended metric (no completion target).
     var metricTarget: Double = 0
-    /// Sub-goal titles pre-populated from a template; created as `SubGoal` rows
-    /// when the goal is saved. Empty for manually-created goals.
-    var subGoalTitles: [String] = []
 }
 
 protocol GoalsInteractor {
@@ -24,12 +21,6 @@ protocol GoalsInteractor {
     func setStatus(_ goal: DBModel.Goal, status: GoalStatus, in context: ModelContext)
     func delete(_ goal: DBModel.Goal, in context: ModelContext)
     func setLinks(_ goal: DBModel.Goal, tasks: [DBModel.Task], habits: [DBModel.Habit], in context: ModelContext)
-
-    /// Append a new sub-goal at the end of the parent's ordered list.
-    func addSubGoal(_ title: String, to goal: DBModel.Goal, in context: ModelContext)
-    /// Toggle done state. Going `false → true` pumps health into the parent's plot.
-    func toggleSubGoal(_ subGoal: DBModel.SubGoal, in context: ModelContext)
-    func deleteSubGoal(_ subGoal: DBModel.SubGoal, in context: ModelContext)
 
     /// Add `amount` to the goal's metric value. Pumps health into the plot, the
     /// same way logging a habit does. No-op if the goal doesn't have a metric.
@@ -60,11 +51,6 @@ final class RealGoalsInteractor: GoalsInteractor {
         // Allocate a farm plot. If at capacity, silently skip — Step 7's UI will
         // surface the over-capacity error and prompt for an upgrade.
         try? farm.bindPlot(to: goal, in: context)
-        // Create template sub-goals if the draft carries any.
-        for (index, subTitle) in draft.subGoalTitles.enumerated() {
-            let sub = DBModel.SubGoal(title: subTitle, order: index, goal: goal)
-            context.insert(sub)
-        }
         context.saveQuietly()
     }
 
@@ -103,41 +89,6 @@ final class RealGoalsInteractor: GoalsInteractor {
         context.saveQuietly()
     }
 
-    // MARK: - Sub-goals
-
-    func addSubGoal(_ title: String, to goal: DBModel.Goal, in context: ModelContext) {
-        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        let nextOrder = (goal.subGoals ?? []).map(\.order).max().map { $0 + 1 } ?? 0
-        let sub = DBModel.SubGoal(title: trimmed, order: nextOrder, goal: goal)
-        context.insert(sub)
-        goal.updatedAt = Date()
-        context.saveQuietly()
-    }
-
-    func toggleSubGoal(_ subGoal: DBModel.SubGoal, in context: ModelContext) {
-        let wasDone = subGoal.isDone
-        subGoal.isDone.toggle()
-        subGoal.updatedAt = Date()
-        // Completion (false → true) pumps health into the parent's plot. Reverting
-        // a completion does not refund (consistent with task/habit completion).
-        if !wasDone, let parent = subGoal.goal {
-            farm.applyContribution(
-                amount: FarmTuning.taskBaseContribution,
-                toGoals: [parent],
-                in: context
-            )
-            parent.updatedAt = Date()
-        }
-        context.saveQuietly()
-    }
-
-    func deleteSubGoal(_ subGoal: DBModel.SubGoal, in context: ModelContext) {
-        subGoal.goal?.updatedAt = Date()
-        context.delete(subGoal)
-        context.saveQuietly()
-    }
-
     // MARK: - Metric
 
     func logMetricProgress(_ goal: DBModel.Goal, amount: Double, in context: ModelContext) {
@@ -159,9 +110,6 @@ final class StubGoalsInteractor: GoalsInteractor {
     func setStatus(_ goal: DBModel.Goal, status: GoalStatus, in context: ModelContext) {}
     func delete(_ goal: DBModel.Goal, in context: ModelContext) {}
     func setLinks(_ goal: DBModel.Goal, tasks: [DBModel.Task], habits: [DBModel.Habit], in context: ModelContext) {}
-    func addSubGoal(_ title: String, to goal: DBModel.Goal, in context: ModelContext) {}
-    func toggleSubGoal(_ subGoal: DBModel.SubGoal, in context: ModelContext) {}
-    func deleteSubGoal(_ subGoal: DBModel.SubGoal, in context: ModelContext) {}
     func logMetricProgress(_ goal: DBModel.Goal, amount: Double, in context: ModelContext) {}
 }
 
