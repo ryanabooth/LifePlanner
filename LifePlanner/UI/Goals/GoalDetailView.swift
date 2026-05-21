@@ -289,11 +289,11 @@ private struct LogMetricSheet: View {
     }
 }
 
-private protocol LinkableItem: Identifiable where ID == UUID { }
+protocol LinkableItem: Identifiable where ID == UUID { }
 extension DBModel.Task: LinkableItem { }
 extension DBModel.Habit: LinkableItem { }
 
-private struct LinkPickerView<Item: LinkableItem, Label: View>: View {
+struct LinkPickerView<Item: LinkableItem, Label: View>: View {
     @Environment(\.dismiss) private var dismiss
     let title: String
     let items: [Item]
@@ -333,6 +333,7 @@ private struct LinkPickerView<Item: LinkableItem, Label: View>: View {
                                     Image(systemName: "checkmark").foregroundStyle(.tint)
                                 }
                             }
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }

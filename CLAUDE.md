@@ -10,6 +10,18 @@ xcodebuild -scheme LifePlanner -destination 'platform=iOS Simulator,name=iPhone 
 
 Always run the full `build test` after touching models, interactors, or anything in `Repositories/`. The destination string is finicky — `iPhone 16` no longer exists in this Xcode; use `iPhone 17`. Test output is voluminous; pipe through `grep -E "TEST SUCCEEDED|TEST FAILED|error:|failed"` for fast triage.
 
+### Simulator & disk hygiene (read before running tests)
+
+`xcodebuild test` clones the target simulator into `~/Library/Developer/XCTestDevices` for each run (~3 GB per clone). These are meant to be torn down automatically, but **leak when a run is interrupted** or when the base simulator is deleted/recreated — they silently accumulated to **145 GB** once. To keep this in check:
+
+- **Purge leaked clones periodically / when disk is tight** (safe when no test is running):
+  ```bash
+  rm -rf ~/Library/Developer/XCTestDevices/*
+  ```
+- **Don't delete or recreate the `iPhone 17` simulator** to "clean up" — each distinct base device spawns its own clone family, multiplying the leak. Reuse the existing one.
+- **Don't pass `-derivedDataPath` pointing inside the repo** (e.g. `build/DD`) — it writes a full second copy of build artifacts into the working tree and can fill the disk. Use the default derived-data location.
+- **Don't delete simulator runtimes** (`xcrun simctl runtime delete …`) to reclaim space. The installed iOS simulator SDK requires its matching runtime; removing it makes `xcodebuild` stop listing *any* simulator destination ("iOS XX is not installed"), and it must be re-downloaded (~8 GB). `XCTestDevices` clones — not runtimes — are the real disk hog.
+
 ## Branching workflow
 
 Never commit directly to `main`. Every change — feature, fix, doc tweak — gets its own branch (`feature/<name>`, `fix/<name>`, `docs/<name>`, `infra/<name>`), pushed, and lands via a PR with **Summary + Test plan** sections. Use `gh pr create` + `gh pr merge --merge`.
