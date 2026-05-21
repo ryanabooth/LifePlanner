@@ -155,18 +155,22 @@ private struct TaskExport: Encodable {
     let isDone: Bool
     let completedAt: Date?
     let recurrence: String?
+    let linkedGoalID: UUID?
+    let linkedGoalTitle: String?
     let createdAt: Date
 
     init(_ task: DBModel.Task) {
-        id          = task.id
-        title       = task.title
-        notes       = task.notes
-        dueDate     = task.dueDate
-        priority    = task.priority.label
-        isDone      = task.isDone
-        completedAt = task.completedAt
-        recurrence  = task.recurrence?.label
-        createdAt   = task.createdAt
+        id              = task.id
+        title           = task.title
+        notes           = task.notes
+        dueDate         = task.dueDate
+        priority        = task.priority.label
+        isDone          = task.isDone
+        completedAt     = task.completedAt
+        recurrence      = task.recurrence?.label
+        linkedGoalID    = task.goals?.first?.id
+        linkedGoalTitle = task.goals?.first?.title
+        createdAt       = task.createdAt
     }
 }
 
@@ -178,17 +182,21 @@ private struct HabitExport: Encodable {
     let currentStreak: Int
     let longestStreak: Int
     let archived: Bool
+    let linkedGoalID: UUID?
+    let linkedGoalTitle: String?
     let createdAt: Date
 
     init(_ habit: DBModel.Habit) {
-        id            = habit.id
-        title         = habit.title
-        notes         = habit.notes
-        frequency     = habit.frequency.label
-        currentStreak = habit.currentStreak
-        longestStreak = habit.longestStreak
-        archived      = habit.archived
-        createdAt     = habit.createdAt
+        id              = habit.id
+        title           = habit.title
+        notes           = habit.notes
+        frequency       = habit.frequency.label
+        currentStreak   = habit.currentStreak
+        longestStreak   = habit.longestStreak
+        archived        = habit.archived
+        linkedGoalID    = habit.goals?.first?.id
+        linkedGoalTitle = habit.goals?.first?.title
+        createdAt       = habit.createdAt
     }
 }
 
