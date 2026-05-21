@@ -23,7 +23,7 @@ struct AddTaskSheet: View {
         Calendar.current.startOfDay(for: Date())
     }
 
-    init(existing: DBModel.Task? = nil, onSave: @escaping (TaskDraft) -> Void) {
+    init(existing: DBModel.Task? = nil, initialGoalID: UUID? = nil, onSave: @escaping (TaskDraft) -> Void) {
         if let existing {
             _draft = State(initialValue: TaskDraft(
                 title: existing.title,
@@ -36,7 +36,7 @@ struct AddTaskSheet: View {
             _includeDueDate = State(initialValue: existing.dueDate != nil)
             isEditing = true
         } else {
-            _draft = State(initialValue: TaskDraft())
+            _draft = State(initialValue: TaskDraft(linkedGoalID: initialGoalID))
             _includeDueDate = State(initialValue: false)
             isEditing = false
         }

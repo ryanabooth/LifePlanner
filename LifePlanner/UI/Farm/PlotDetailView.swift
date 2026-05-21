@@ -16,11 +16,31 @@ struct PlotDetailView: View {
     @Query private var plots: [DBModel.FarmPlot]
     @Query private var weatherEvents: [DBModel.WeatherEvent]
 
+    @Query(sort: [SortDescriptor(\DBModel.Task.createdAt, order: .reverse)])
+    private var allTasks: [DBModel.Task]
+
+    @Query(
+        filter: #Predicate<DBModel.Habit> { !$0.archived },
+        sort: [SortDescriptor(\DBModel.Habit.createdAt, order: .reverse)]
+    )
+    private var allHabits: [DBModel.Habit]
+
     @State private var showEditGoal = false
+    @State private var showingTaskPicker = false
+    @State private var showingHabitPicker = false
+    @State private var showingNewTask = false
+    @State private var showingNewHabit = false
 
     private var activeWeather: DBModel.WeatherEvent? {
         let now = Date()
         return weatherEvents.first { $0.startedAt <= now && $0.expiresAt > now }
+    }
+
+    /// Tasks offered in the link picker: incomplete tasks, plus any already
+    /// linked to this goal so they remain selectable for unlinking.
+    private func linkableTasks(for goal: DBModel.Goal) -> [DBModel.Task] {
+        let linkedIDs = Set((goal.linkedTasks ?? []).map(\.id))
+        return allTasks.filter { !$0.isDone || linkedIDs.contains($0.id) }
     }
 
     init(plotID: UUID) {
@@ -61,6 +81,79 @@ struct PlotDetailView: View {
                     injected.interactors.goals.update(goal, with: draft, in: modelContext)
                 }
             }
+        }
+        .sheet(isPresented: $showingTaskPicker) {
+            if let goal = plot?.goal {
+                LinkPickerView(
+                    title: "Link Tasks",
+                    items: linkableTasks(for: goal),
+                    initiallySelected: Set((goal.linkedTasks ?? []).map(\.id)),
+                    rowLabel: { Text($0.title) }
+                ) { selectedIDs in
+                    let tasks = allTasks.filter { selectedIDs.contains($0.id) }
+                    injected.interactors.goals.setLinks(
+                        goal, tasks: tasks, habits: goal.linkedHabits ?? [], in: modelContext
+                    )
+                }
+            }
+        }
+        .sheet(isPresented: $showingHabitPicker) {
+            if let goal = plot?.goal {
+                LinkPickerView(
+                    title: "Link Habits",
+                    items: allHabits,
+                    initiallySelected: Set((goal.linkedHabits ?? []).map(\.id)),
+                    rowLabel: { Text($0.title) }
+                ) { selectedIDs in
+                    let habits = allHabits.filter { selectedIDs.contains($0.id) }
+                    injected.interactors.goals.setLinks(
+                        goal, tasks: goal.linkedTasks ?? [], habits: habits, in: modelContext
+                    )
+                }
+            }
+        }
+        .sheet(isPresented: $showingNewTask) {
+            if let goal = plot?.goal {
+                AddTaskSheet(initialGoalID: goal.id) { draft in
+                    injected.interactors.tasks.add(draft, in: modelContext)
+                }
+            }
+        }
+        .sheet(isPresented: $showingNewHabit) {
+            if let goal = plot?.goal {
+                AddHabitSheet(initialGoalID: goal.id) { draft in
+                    injected.interactors.habits.add(draft, in: modelContext)
+                }
+            }
+        }
+    }
+
+    /// A section header with two trailing quick actions: link an existing item,
+    /// and create a new one pre-linked to this goal.
+    private func linkSectionHeader(
+        _ title: String,
+        linkLabel: String,
+        createLabel: String,
+        onLink: @escaping () -> Void,
+        onCreate: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: 16) {
+            Text(title)
+            Spacer()
+            Button(action: onLink) {
+                Image(systemName: "link")
+                    .foregroundStyle(.tint)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(linkLabel)
+            Button(action: onCreate) {
+                Image(systemName: "plus.circle.fill")
+                    .foregroundStyle(.tint)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(createLabel)
         }
     }
 
@@ -136,13 +229,20 @@ struct PlotDetailView: View {
                                 .foregroundStyle(.primary)
                             Spacer()
                         }
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(task.isDone ? "Reopen \(task.title)" : "Mark complete: \(task.title)")
                 }
             }
         } header: {
-            Text("Linked tasks")
+            linkSectionHeader(
+                "Linked tasks",
+                linkLabel: "Link existing task",
+                createLabel: "New task for this goal",
+                onLink: { showingTaskPicker = true },
+                onCreate: { showingNewTask = true }
+            )
         }
     }
 
@@ -165,13 +265,20 @@ struct PlotDetailView: View {
                                 .foregroundStyle(.primary)
                             Spacer()
                         }
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(habit.isDone(on: Date()) ? "Undo log: \(habit.title)" : "Log habit: \(habit.title)")
                 }
             }
         } header: {
-            Text("Linked habits")
+            linkSectionHeader(
+                "Linked habits",
+                linkLabel: "Link existing habit",
+                createLabel: "New habit for this goal",
+                onLink: { showingHabitPicker = true },
+                onCreate: { showingNewHabit = true }
+            )
         }
     }
 

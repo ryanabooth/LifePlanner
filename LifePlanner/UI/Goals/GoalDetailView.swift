@@ -21,6 +21,8 @@ struct GoalDetailView: View {
     @State private var showingEdit = false
     @State private var showingTaskPicker = false
     @State private var showingHabitPicker = false
+    @State private var showingNewTask = false
+    @State private var showingNewHabit = false
     @State private var showLogMetric = false
     @State private var logAmount: Double = 1
 
@@ -68,13 +70,14 @@ struct GoalDetailView: View {
                         Text(habit.title)
                     }
                 }
-                Button {
-                    showingHabitPicker = true
-                } label: {
-                    Label("Edit linked habits", systemImage: "repeat")
-                }
             } header: {
-                Text("Habits")
+                sectionHeader(
+                    "Habits",
+                    linkLabel: "Link existing habit",
+                    createLabel: "New habit for this goal",
+                    onLink: { showingHabitPicker = true },
+                    onCreate: { showingNewHabit = true }
+                )
             }
 
             Section {
@@ -91,13 +94,14 @@ struct GoalDetailView: View {
                         }
                     }
                 }
-                Button {
-                    showingTaskPicker = true
-                } label: {
-                    Label("Edit linked tasks", systemImage: "checklist")
-                }
             } header: {
-                Text("Tasks")
+                sectionHeader(
+                    "Tasks",
+                    linkLabel: "Link existing task",
+                    createLabel: "New task for this goal",
+                    onLink: { showingTaskPicker = true },
+                    onCreate: { showingNewTask = true }
+                )
             }
 
             Section {
@@ -161,9 +165,48 @@ struct GoalDetailView: View {
             )
             .presentationDetents([.medium])
         }
+        .sheet(isPresented: $showingNewTask) {
+            AddTaskSheet(initialGoalID: goal.id) { draft in
+                injected.interactors.tasks.add(draft, in: modelContext)
+            }
+        }
+        .sheet(isPresented: $showingNewHabit) {
+            AddHabitSheet(initialGoalID: goal.id) { draft in
+                injected.interactors.habits.add(draft, in: modelContext)
+            }
+        }
     }
 
     // MARK: - Sections
+
+    /// A section header with two trailing quick actions: link an existing item,
+    /// and create a new one pre-linked to this goal.
+    private func sectionHeader(
+        _ title: String,
+        linkLabel: String,
+        createLabel: String,
+        onLink: @escaping () -> Void,
+        onCreate: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: 16) {
+            Text(title)
+            Spacer()
+            Button(action: onLink) {
+                Image(systemName: "link")
+                    .foregroundStyle(.tint)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(linkLabel)
+            Button(action: onCreate) {
+                Image(systemName: "plus.circle.fill")
+                    .foregroundStyle(.tint)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(createLabel)
+        }
+    }
 
     private var metricSection: some View {
         Section {
@@ -246,11 +289,11 @@ private struct LogMetricSheet: View {
     }
 }
 
-private protocol LinkableItem: Identifiable where ID == UUID { }
+protocol LinkableItem: Identifiable where ID == UUID { }
 extension DBModel.Task: LinkableItem { }
 extension DBModel.Habit: LinkableItem { }
 
-private struct LinkPickerView<Item: LinkableItem, Label: View>: View {
+struct LinkPickerView<Item: LinkableItem, Label: View>: View {
     @Environment(\.dismiss) private var dismiss
     let title: String
     let items: [Item]
@@ -290,6 +333,7 @@ private struct LinkPickerView<Item: LinkableItem, Label: View>: View {
                                     Image(systemName: "checkmark").foregroundStyle(.tint)
                                 }
                             }
+                            .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }
