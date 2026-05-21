@@ -34,7 +34,6 @@ struct AddTaskSheet: View {
                 notes: existing.notes,
                 dueDate: existing.dueDate,
                 priority: existing.priority,
-                tags: existing.tags,
                 recurrence: existing.recurrence,
                 linkedGoalID: existing.goals?.first?.id
             ))

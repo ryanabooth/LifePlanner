@@ -16,7 +16,6 @@ actor SpotlightIndexer {
         let attrs = CSSearchableItemAttributeSet(contentType: UTType.text)
         attrs.title = task.title
         attrs.contentDescription = task.notes
-        attrs.keywords = task.tags.isEmpty ? nil : task.tags
         if let due = task.dueDate {
             attrs.dueDate = due
         }

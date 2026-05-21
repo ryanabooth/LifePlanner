@@ -6,7 +6,6 @@ struct TaskDraft {
     var notes: String? = nil
     var dueDate: Date? = nil
     var priority: TaskPriority = .normal
-    var tags: [String] = []
     var recurrence: TaskRecurrence? = nil
     /// ID of the single goal this task is linked to, or nil for unlinked.
     var linkedGoalID: UUID? = nil
@@ -49,7 +48,6 @@ final class RealTasksInteractor: TasksInteractor {
             notes: draft.notes?.nilIfBlank,
             dueDate: draft.dueDate,
             priority: draft.priority,
-            tags: draft.tags,
             recurrence: draft.recurrence
         )
         context.insert(task)
@@ -67,7 +65,6 @@ final class RealTasksInteractor: TasksInteractor {
         task.notes = draft.notes?.nilIfBlank
         task.dueDate = draft.dueDate
         task.priority = draft.priority
-        task.tags = draft.tags
         task.recurrence = draft.recurrence
         task.updatedAt = Date()
         applyGoalLink(draft.linkedGoalID, to: task, in: context)
@@ -129,7 +126,6 @@ final class RealTasksInteractor: TasksInteractor {
             notes: task.notes,
             dueDate: nextDue,
             priority: task.priority,
-            tags: task.tags,
             recurrence: recurrence
         )
         context.insert(next)

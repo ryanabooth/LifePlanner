@@ -95,7 +95,6 @@ extension DBModel {
         var priorityRaw: Int = TaskPriority.normal.rawValue
         var isDone: Bool = false
         var completedAt: Date? = nil
-        var tags: [String] = []
         var recurrenceRaw: Int? = nil
         var createdAt: Date = Date()
         var updatedAt: Date = Date()
@@ -110,7 +109,6 @@ extension DBModel {
             priority: TaskPriority = .normal,
             isDone: Bool = false,
             completedAt: Date? = nil,
-            tags: [String] = [],
             recurrence: TaskRecurrence? = nil,
             createdAt: Date = Date(),
             updatedAt: Date = Date()
@@ -122,7 +120,6 @@ extension DBModel {
             self.priorityRaw = priority.rawValue
             self.isDone = isDone
             self.completedAt = completedAt
-            self.tags = tags
             self.recurrenceRaw = recurrence?.rawValue
             self.createdAt = createdAt
             self.updatedAt = updatedAt
