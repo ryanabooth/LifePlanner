@@ -160,6 +160,10 @@ struct PlotDetailView: View {
     @ViewBuilder
     private func content(for plot: DBModel.FarmPlot) -> some View {
         Form {
+            if plot.state == .dead || plot.state == .withered {
+                replantSection(plot: plot)
+            }
+
             statsSection(plot: plot)
 
             if let goal = plot.goal {
@@ -168,10 +172,6 @@ struct PlotDetailView: View {
             } else {
                 commonFieldHabitsSection
                 commonFieldTasksSection
-            }
-
-            if plot.state == .dead || plot.state == .withered {
-                replantSection(plot: plot)
             }
         }
     }
