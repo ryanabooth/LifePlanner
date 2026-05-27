@@ -166,11 +166,8 @@ struct PlotDetailView: View {
                 habitsSection(goal: goal)
                 tasksSection(goal: goal)
             } else {
-                Section {
-                    Text("The common field is fed by any habit or task you complete that isn't linked to a goal.")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
-                }
+                commonFieldHabitsSection
+                commonFieldTasksSection
             }
 
             if plot.state == .dead || plot.state == .withered {
@@ -279,6 +276,79 @@ struct PlotDetailView: View {
                 onLink: { showingHabitPicker = true },
                 onCreate: { showingNewHabit = true }
             )
+        }
+    }
+
+    private var commonFieldHabitsSection: some View {
+        let unlinked = allHabits
+            .filter { ($0.goals ?? []).isEmpty }
+            .sorted { !$0.isDone(on: Date()) && $1.isDone(on: Date()) }
+        return Section {
+            if unlinked.isEmpty {
+                Text("No unlinked habits yet.")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(unlinked) { habit in
+                    Button {
+                        if !habit.isDone(on: Date()) { HapticPlayer.shared.crescendo() }
+                        injected.interactors.habits.toggleDone(habit, on: Date(), in: modelContext)
+                    } label: {
+                        HStack {
+                            Image(systemName: habit.isDone(on: Date()) ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(habit.isDone(on: Date()) ? .green : .secondary)
+                            Text(habit.title)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(habit.isDone(on: Date()) ? "Undo log: \(habit.title)" : "Log habit: \(habit.title)")
+                }
+            }
+        } header: {
+            Text("Habits")
+                .font(.footnote)
+        } footer: {
+            Text("Unlinked habits feed the common field.")
+                .font(.footnote)
+        }
+    }
+
+    private var commonFieldTasksSection: some View {
+        let unlinked = allTasks
+            .filter { ($0.goals ?? []).isEmpty && !$0.isDone }
+            .sorted { !$0.isDone && $1.isDone }
+        return Section {
+            if unlinked.isEmpty {
+                Text("No unlinked tasks yet.")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(unlinked) { task in
+                    Button {
+                        if !task.isDone { HapticPlayer.shared.crescendo() }
+                        injected.interactors.tasks.toggleDone(task, in: modelContext)
+                    } label: {
+                        HStack {
+                            Image(systemName: task.isDone ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(task.isDone ? .green : .secondary)
+                            Text(task.title)
+                                .strikethrough(task.isDone)
+                                .foregroundStyle(.primary)
+                            Spacer()
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(task.isDone ? "Reopen \(task.title)" : "Mark complete: \(task.title)")
+                }
+            }
+        } header: {
+            Text("Tasks")
+                .font(.footnote)
+        } footer: {
+            Text("Unlinked tasks feed the common field.")
+                .font(.footnote)
         }
     }
 
