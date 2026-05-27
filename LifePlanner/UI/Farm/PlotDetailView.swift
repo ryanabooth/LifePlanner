@@ -173,7 +173,7 @@ struct PlotDetailView: View {
                 }
             }
 
-            if plot.state == .dead {
+            if plot.state == .dead || plot.state == .withered {
                 replantSection(plot: plot)
             }
         }
@@ -211,7 +211,7 @@ struct PlotDetailView: View {
 
     private func tasksSection(goal: DBModel.Goal) -> some View {
         Section {
-            let linked = goal.linkedTasks ?? []
+            let linked = (goal.linkedTasks ?? []).sorted { !$0.isDone && $1.isDone }
             if linked.isEmpty {
                 Text("No tasks linked to this goal.")
                     .foregroundStyle(.secondary)
@@ -248,7 +248,7 @@ struct PlotDetailView: View {
 
     private func habitsSection(goal: DBModel.Goal) -> some View {
         Section {
-            let linked = goal.linkedHabits ?? []
+            let linked = (goal.linkedHabits ?? []).sorted { !$0.isDone(on: Date()) && $1.isDone(on: Date()) }
             if linked.isEmpty {
                 Text("No habits linked to this goal.")
                     .foregroundStyle(.secondary)
@@ -291,7 +291,7 @@ struct PlotDetailView: View {
             }
             .disabled(injected.interactors.economy.balance(in: modelContext) < FarmTuning.replantCost)
         } header: {
-            Text("Plot died")
+            Text(plot.state == .dead ? "Plot died" : "Plot is withering")
         } footer: {
             Text("Replanting restores the plot to health \(FarmTuning.initialHealth). The underlying goal is preserved.")
         }
