@@ -61,7 +61,7 @@ struct GoalDetailView: View {
             }
 
             Section {
-                let linked = goal.linkedHabits ?? []
+                let linked = (goal.linkedHabits ?? []).sorted { !$0.isDone(on: Date()) && $1.isDone(on: Date()) }
                 if linked.isEmpty {
                     Text("No habits linked.")
                         .foregroundStyle(.secondary)
@@ -81,7 +81,7 @@ struct GoalDetailView: View {
             }
 
             Section {
-                let linked = goal.linkedTasks ?? []
+                let linked = (goal.linkedTasks ?? []).sorted { !$0.isDone && $1.isDone }
                 if linked.isEmpty {
                     Text("No tasks linked.")
                         .foregroundStyle(.secondary)

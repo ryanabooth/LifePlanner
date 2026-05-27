@@ -341,7 +341,7 @@ final class RealFarmInteractor: FarmInteractor {
     // MARK: - Replant + upgrade
 
     func replant(_ plot: DBModel.FarmPlot, in context: ModelContext) throws {
-        guard plot.state == .dead else { throw FarmError.plotNotDead }
+        guard plot.state == .dead || plot.state == .withered else { throw FarmError.plotNotDead }
         try economy.spend(FarmTuning.replantCost, reason: "replant", in: context)
         plot.health = FarmTuning.initialHealth
         plot.state = .growing
