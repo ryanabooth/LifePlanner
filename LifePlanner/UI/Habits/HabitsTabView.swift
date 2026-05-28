@@ -114,15 +114,21 @@ private struct HabitRow: View {
                                 Image(systemName: "bell.fill")
                                     .accessibilityLabel("reminder set")
                             }
-                            if habit.currentStreak >= 2 {
-                                Text("🔥 \(habit.currentStreak)")
-                                    .accessibilityLabel("\(habit.currentStreak) day streak")
-                            }
                         }
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     }
                     Spacer()
+                    if habit.currentStreak >= 1 {
+                        HStack(spacing: 2) {
+                            Image(systemName: "flame.fill")
+                            Text("\(habit.currentStreak)")
+                                .fontWeight(.semibold)
+                        }
+                        .font(.subheadline)
+                        .foregroundStyle(.orange)
+                        .accessibilityLabel("\(habit.currentStreak) day streak")
+                    }
                     Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.tertiary)
@@ -148,7 +154,7 @@ private struct HabitRow: View {
     private var editButtonAccessibilityLabel: String {
         var parts = [habit.title, cadenceLabel]
         if habit.reminderTime != nil { parts.append("reminder set") }
-        if habit.currentStreak >= 2 { parts.append("\(habit.currentStreak) day streak") }
+        if habit.currentStreak >= 1 { parts.append("\(habit.currentStreak) day streak") }
         parts.append("Edit")
         return parts.joined(separator: ", ")
     }
