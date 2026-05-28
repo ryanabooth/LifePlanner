@@ -160,7 +160,9 @@ struct PlotDetailView: View {
     @ViewBuilder
     private func content(for plot: DBModel.FarmPlot) -> some View {
         Form {
-            if plot.state == .dead || plot.state == .withered {
+            if plot.goal?.status == .done {
+                harvestSection(plot: plot)
+            } else if plot.state == .dead || plot.state == .withered {
                 replantSection(plot: plot)
             }
 
@@ -349,6 +351,22 @@ struct PlotDetailView: View {
         } footer: {
             Text("Unlinked tasks feed the common field.")
                 .font(.footnote)
+        }
+    }
+
+    private func harvestSection(plot: DBModel.FarmPlot) -> some View {
+        let reward = FarmTuning.harvestReward(health: plot.health)
+        return Section {
+            Button {
+                try? injected.interactors.farm.retirePlot(plot, in: modelContext)
+            } label: {
+                Label("Harvest plot (+\(reward) gold)", systemImage: "star.circle.fill")
+                    .foregroundStyle(.yellow)
+            }
+        } header: {
+            Text("Goal complete!")
+        } footer: {
+            Text("Harvesting frees this plot for a new goal. The goal itself is kept for your records.")
         }
     }
 

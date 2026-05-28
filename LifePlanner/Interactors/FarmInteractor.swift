@@ -33,6 +33,13 @@ enum FarmTuning {
 
     // Economy.
     static let replantCost = 15
+    /// Gold awarded when the user harvests a completed goal's plot.
+    /// Scales with health: mature plot (≥80) pays the full bonus.
+    static func harvestReward(health: Int) -> Int {
+        let base = 30
+        let bonus = Int(Double(health) / Double(healthMax) * 20)
+        return base + bonus
+    }
 
     // Weather side-effects.
     static let weatherSunshineGold = 15
@@ -83,6 +90,11 @@ protocol FarmInteractor {
 
     /// Restore a dead plot to `.growing` at initial health. Costs gold.
     func replant(_ plot: DBModel.FarmPlot, in context: ModelContext) throws
+
+    /// Harvest a completed goal's plot: detach the goal, reset the plot to
+    /// empty, and award a gold bonus based on the plot's current health.
+    /// Throws if the goal is not in `.done` status.
+    func retirePlot(_ plot: DBModel.FarmPlot, in context: ModelContext) throws
 
     /// Increment `FarmState.plotCapacity` by one. Costs gold.
     func purchaseCapacity(in context: ModelContext) throws
@@ -359,6 +371,23 @@ final class RealFarmInteractor: FarmInteractor {
         achievements.checkAll(in: context)
     }
 
+    func retirePlot(_ plot: DBModel.FarmPlot, in context: ModelContext) throws {
+        guard plot.goal?.status == .done else { throw FarmError.plotNotDead }
+        let reward = FarmTuning.harvestReward(health: plot.health)
+        economy.credit(reward, reason: "harvest", in: context)
+        // Detach goal and reset to empty.
+        plot.goal?.plot = nil
+        plot.goal = nil
+        plot.health = FarmTuning.healthMax
+        plot.state = .empty
+        plot.lastContribution = nil
+        plot.updatedAt = Date()
+        let id = plot.id
+        Task.detached { [scheduler] in await scheduler.cancelPlotAlert(plotID: id) }
+        achievements.checkAll(in: context)
+        context.saveQuietly()
+    }
+
     func purchaseCapacity(in context: ModelContext) throws {
         guard let state = farmState(in: context) else { throw FarmError.noFarmState }
         let cost = FarmTuning.upgradeCost(currentCapacity: state.plotCapacity)
@@ -400,5 +429,6 @@ final class StubFarmInteractor: FarmInteractor {
     func applyTaskCompletion(_ task: DBModel.Task, in context: ModelContext) -> Int { 0 }
     func applyDailyDecay(now: Date, in context: ModelContext) {}
     func replant(_ plot: DBModel.FarmPlot, in context: ModelContext) throws {}
+    func retirePlot(_ plot: DBModel.FarmPlot, in context: ModelContext) throws {}
     func purchaseCapacity(in context: ModelContext) throws {}
 }
