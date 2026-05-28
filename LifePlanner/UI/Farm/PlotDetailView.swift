@@ -160,7 +160,7 @@ struct PlotDetailView: View {
     @ViewBuilder
     private func content(for plot: DBModel.FarmPlot) -> some View {
         Form {
-            if plot.goal?.status == .done {
+            if injected.interactors.farm.isHarvestable(plot) {
                 harvestSection(plot: plot)
             } else if plot.state == .dead || plot.state == .withered {
                 replantSection(plot: plot)
