@@ -91,9 +91,12 @@ protocol FarmInteractor {
     /// Restore a dead plot to `.growing` at initial health. Costs gold.
     func replant(_ plot: DBModel.FarmPlot, in context: ModelContext) throws
 
-    /// Harvest a completed goal's plot: detach the goal, reset the plot to
-    /// empty, and award a gold bonus based on the plot's current health.
-    /// Throws if the goal is not in `.done` status.
+    /// Harvest a completed goal's plot: detach the goal, delete the plot,
+    /// and award a gold bonus based on the plot's current health.
+    /// True when goal.status == .done OR all linked tasks are complete.
+    func isHarvestable(_ plot: DBModel.FarmPlot) -> Bool
+
+    /// Harvest a completed goal's plot.
     func retirePlot(_ plot: DBModel.FarmPlot, in context: ModelContext) throws
 
     /// Increment `FarmState.plotCapacity` by one. Costs gold.
@@ -372,20 +375,28 @@ final class RealFarmInteractor: FarmInteractor {
     }
 
     func retirePlot(_ plot: DBModel.FarmPlot, in context: ModelContext) throws {
-        guard plot.goal?.status == .done else { throw FarmError.plotNotDead }
+        guard isHarvestable(plot) else { throw FarmError.plotNotDead }
         let reward = FarmTuning.harvestReward(health: plot.health)
         economy.credit(reward, reason: "harvest", in: context)
-        // Detach goal and reset to empty.
-        plot.goal?.plot = nil
-        plot.goal = nil
-        plot.health = FarmTuning.healthMax
-        plot.state = .empty
-        plot.lastContribution = nil
-        plot.updatedAt = Date()
+        // Detach goal relationship then delete the plot entirely so the slot
+        // is freed and it disappears from the farm scene.
+        if let goal = plot.goal {
+            goal.plot = nil
+        }
         let id = plot.id
+        context.delete(plot)
         Task.detached { [scheduler] in await scheduler.cancelPlotAlert(plotID: id) }
         achievements.checkAll(in: context)
         context.saveQuietly()
+    }
+
+    /// A plot is harvestable when its goal is explicitly marked Done, OR when
+    /// it has linked tasks and all of them are complete.
+    func isHarvestable(_ plot: DBModel.FarmPlot) -> Bool {
+        guard let goal = plot.goal else { return false }
+        if goal.status == .done { return true }
+        let tasks = goal.linkedTasks ?? []
+        return !tasks.isEmpty && tasks.allSatisfy(\.isDone)
     }
 
     func purchaseCapacity(in context: ModelContext) throws {
@@ -429,6 +440,7 @@ final class StubFarmInteractor: FarmInteractor {
     func applyTaskCompletion(_ task: DBModel.Task, in context: ModelContext) -> Int { 0 }
     func applyDailyDecay(now: Date, in context: ModelContext) {}
     func replant(_ plot: DBModel.FarmPlot, in context: ModelContext) throws {}
+    func isHarvestable(_ plot: DBModel.FarmPlot) -> Bool { false }
     func retirePlot(_ plot: DBModel.FarmPlot, in context: ModelContext) throws {}
     func purchaseCapacity(in context: ModelContext) throws {}
 }
