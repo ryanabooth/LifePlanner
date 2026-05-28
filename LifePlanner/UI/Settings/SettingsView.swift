@@ -8,6 +8,7 @@ struct SettingsView: View {
     @AppStorage("notif.taskDue")          private var taskDue           = true
     @AppStorage("notif.plotAlerts")       private var plotAlerts        = true
     @AppStorage("notif.streakMilestones") private var streakMilestones  = true
+    @AppStorage("farm.vacationMode")      private var vacationMode      = false
 
     @Environment(\.injected) private var injected
     @Environment(\.modelContext) private var modelContext
@@ -24,6 +25,7 @@ struct SettingsView: View {
             Form {
                 insightsSection
                 notificationsSection
+                farmSection
                 dataSection
                 aboutSection
             }
@@ -71,6 +73,18 @@ struct SettingsView: View {
             }
         } header: {
             Text("Notifications")
+        }
+    }
+
+    private var farmSection: some View {
+        Section {
+            Toggle(isOn: $vacationMode) {
+                Label("Vacation mode", systemImage: "figure.walk.departure")
+            }
+        } header: {
+            Text("Farm")
+        } footer: {
+            Text("Pauses plot health decay while you're away. Days skipped won't count against your plots when you return.")
         }
     }
 

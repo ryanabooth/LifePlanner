@@ -273,6 +273,10 @@ final class RealFarmInteractor: FarmInteractor {
         }
         guard daysElapsed > 0 else { return }
 
+        // Vacation mode: advance the tick so missed days don't pile up on return,
+        // but skip applying any health loss.
+        if UserDefaults.standard.bool(forKey: "farm.vacationMode") { return }
+
         let decayMultiplier = activeWeatherKind(in: context).decayMultiplier
         let allPlots = (try? context.fetch(FetchDescriptor<DBModel.FarmPlot>())) ?? []
         for plot in allPlots where plot.kind != .commonField {
