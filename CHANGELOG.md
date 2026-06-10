@@ -9,6 +9,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Build 19] — pending TestFlight
 
+### Added
+- **Weekdays habit cadence** — habits can now repeat Monday–Friday only. Weekends don't break the streak (Fri→Mon counts as consecutive) and don't nag. Reminders for weekdays habits fire Mon–Fri only. Schema bumped to v0.16.0
+
 ### Changed
 - Withering now lasts 1 day before a plot dies (was 3), so neglect has faster consequences
 - Dead plots now block linked habit/task completion in the plot detail view until replanted, with a "Re-plant this plot to resume…" note (contributions already no-op'd on dead plots; this makes it visible)

@@ -6,13 +6,17 @@ enum HabitFrequency: Int, Codable, CaseIterable, Identifiable {
     /// Log `weeklyTarget` entries within an ISO week to count the week as "done".
     /// Streak measures consecutive completed weeks ending at the toggled date.
     case weekly = 1
+    /// Due Monday–Friday only. Requires a log on each weekday; weekends are not
+    /// due (no nag, and they don't break the streak).
+    case weekdays = 2
 
     var id: Int { rawValue }
 
     var label: String {
         switch self {
-        case .daily:  return "Daily"
-        case .weekly: return "Weekly"
+        case .daily:    return "Daily"
+        case .weekly:   return "Weekly"
+        case .weekdays: return "Weekdays"
         }
     }
 }
@@ -89,14 +93,30 @@ extension DBModel {
             return (entries ?? []).filter { $0.date >= weekStart && $0.date < weekEnd }.count
         }
 
+        /// Whether this habit is scheduled to be logged on `day`. Daily and
+        /// weekly habits are always "due"; weekdays habits are due Mon–Fri only.
+        func isDue(on day: Date, calendar: Calendar = .current) -> Bool {
+            switch frequency {
+            case .daily, .weekly:
+                return true
+            case .weekdays:
+                return !calendar.isDateInWeekend(day)
+            }
+        }
+
         /// True if the week containing `day` meets the cadence target.
-        /// Daily habits require a log on `day`; weekly habits require `weeklyTarget` entries that week.
+        /// Daily habits require a log on `day`; weekly habits require `weeklyTarget`
+        /// entries that week; weekdays habits require a log on `day` when it's a
+        /// weekday and are vacuously complete on weekends.
         func isWeekComplete(containing day: Date, calendar: Calendar = .current) -> Bool {
             switch frequency {
             case .daily:
                 return isDone(on: day, calendar: calendar)
             case .weekly:
                 return entriesInWeek(containing: day, calendar: calendar) >= weeklyTarget
+            case .weekdays:
+                guard isDue(on: day, calendar: calendar) else { return true }
+                return isDone(on: day, calendar: calendar)
             }
         }
     }

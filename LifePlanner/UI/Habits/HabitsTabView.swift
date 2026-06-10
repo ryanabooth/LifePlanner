@@ -143,7 +143,7 @@ private struct HabitRow: View {
 
     private var cadenceLabel: String {
         switch habit.frequency {
-        case .daily:
+        case .daily, .weekdays:
             return habit.frequency.label
         case .weekly:
             let count = habit.entriesInWeek(containing: Date())

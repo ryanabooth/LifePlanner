@@ -86,7 +86,9 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         )
         let active = ((try? context.fetch(descriptor)) ?? []).compactMap { habit -> HabitReminderInfo? in
             guard let time = habit.reminderTime else { return nil }
-            return HabitReminderInfo(id: habit.id, title: habit.title, time: time)
+            return HabitReminderInfo(
+                id: habit.id, title: habit.title, time: time,
+                weekdaysOnly: habit.frequency == .weekdays)
         }
         let scheduler = notificationScheduler
         Task.detached { await scheduler.reconcileHabitReminders(active: active) }

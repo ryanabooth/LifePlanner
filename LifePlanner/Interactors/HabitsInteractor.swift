@@ -142,6 +142,8 @@ final class RealHabitsInteractor: HabitsInteractor {
             streak = computeDailyStreak(for: habit, endingAt: baseDay)
         case .weekly:
             streak = computeWeeklyStreak(for: habit, endingAt: baseDay)
+        case .weekdays:
+            streak = computeWeekdaysStreak(for: habit, endingAt: baseDay)
         }
         habit.currentStreak = streak
         if streak > habit.longestStreak { habit.longestStreak = streak }
@@ -154,6 +156,31 @@ final class RealHabitsInteractor: HabitsInteractor {
         while entryDays.contains(expected) {
             streak += 1
             guard let prev = calendar.date(byAdding: .day, value: -1, to: expected) else { break }
+            expected = prev
+        }
+        return streak
+    }
+
+    /// Counts consecutive *weekdays* (Mon–Fri) logged, ending at `baseDay`.
+    /// Weekends are skipped, not counted and not streak-breaking: a Friday→Monday
+    /// chain stays intact across the weekend. If `baseDay` itself is a weekend,
+    /// the walk starts from the most recent weekday.
+    private func computeWeekdaysStreak(for habit: DBModel.Habit, endingAt baseDay: Date) -> Int {
+        let entryDays = Set((habit.entries ?? []).map { calendar.startOfDay(for: $0.date) })
+        var streak = 0
+        var expected = calendar.startOfDay(for: baseDay)
+        // Skip back over any trailing weekend days to the latest weekday.
+        while calendar.isDateInWeekend(expected) {
+            guard let prev = calendar.date(byAdding: .day, value: -1, to: expected) else { return 0 }
+            expected = prev
+        }
+        while entryDays.contains(expected) {
+            streak += 1
+            guard var prev = calendar.date(byAdding: .day, value: -1, to: expected) else { break }
+            while calendar.isDateInWeekend(prev) {
+                guard let earlier = calendar.date(byAdding: .day, value: -1, to: prev) else { return streak }
+                prev = earlier
+            }
             expected = prev
         }
         return streak
@@ -220,9 +247,11 @@ final class RealHabitsInteractor: HabitsInteractor {
     private func syncReminder(for habit: DBModel.Habit) {
         let id = habit.id
         let title = habit.title
+        let weekdaysOnly = habit.frequency == .weekdays
         if let time = habit.reminderTime, !habit.archived {
             Task.detached { [scheduler] in
-                await scheduler.scheduleHabitReminder(habitID: id, title: title, time: time)
+                await scheduler.scheduleHabitReminder(
+                    habitID: id, title: title, time: time, weekdaysOnly: weekdaysOnly)
             }
         } else {
             Task.detached { [scheduler] in
