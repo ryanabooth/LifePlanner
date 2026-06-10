@@ -6,10 +6,12 @@ struct HabitReminderInfo: Sendable {
     let id: UUID
     let title: String
     let time: Date
+    /// When true, the reminder fires Monday–Friday only (weekdays cadence).
+    var weekdaysOnly: Bool = false
 }
 
 protocol NotificationScheduler: Sendable {
-    func scheduleHabitReminder(habitID: UUID, title: String, time: Date) async
+    func scheduleHabitReminder(habitID: UUID, title: String, time: Date, weekdaysOnly: Bool) async
     func cancelHabitReminder(habitID: UUID) async
     /// Remove any stale/orphaned habit reminders (deleted, archived, or scheduled
     /// by an older build) and ensure each `active` habit owns exactly one reminder.
@@ -27,6 +29,12 @@ protocol NotificationScheduler: Sendable {
 
 extension NotificationScheduler {
     func habitReminderID(_ habitID: UUID) -> String { "habit-reminder-\(habitID.uuidString)" }
+    /// Gregorian weekday numbers for Mon–Fri (1 = Sunday … 7 = Saturday).
+    var weekdayReminderWeekdays: [Int] { [2, 3, 4, 5, 6] }
+    /// Per-weekday reminder identifiers for a weekdays-cadence habit.
+    func habitReminderWeekdayIDs(_ habitID: UUID) -> [String] {
+        weekdayReminderWeekdays.map { "\(habitReminderID(habitID))-wd\($0)" }
+    }
     func taskDueID(_ taskID: UUID) -> String { "task-due-\(taskID.uuidString)" }
     func plotAlertID(_ plotID: UUID) -> String { "plot-alert-\(plotID.uuidString)" }
 }
@@ -39,7 +47,7 @@ final class RealNotificationScheduler: NotificationScheduler {
         self.center = center
     }
 
-    func scheduleHabitReminder(habitID: UUID, title: String, time: Date) async {
+    func scheduleHabitReminder(habitID: UUID, title: String, time: Date, weekdaysOnly: Bool) async {
         guard UserDefaults.standard.object(forKey: "notif.habitReminders") as? Bool ?? true else { return }
         guard await ensureAuthorized() else { return }
 
@@ -49,28 +57,41 @@ final class RealNotificationScheduler: NotificationScheduler {
         content.sound = .default
         content.categoryIdentifier = "habit-reminder"
 
-        let comps = Calendar.current.dateComponents([.hour, .minute], from: time)
-        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
-        let request = UNNotificationRequest(
-            identifier: habitReminderID(habitID),
-            content: content,
-            trigger: trigger
-        )
+        // Clear any previously-scheduled variant (daily and per-weekday) first.
+        await cancelHabitReminder(habitID: habitID)
 
-        center.removePendingNotificationRequests(withIdentifiers: [habitReminderID(habitID)])
-        do {
-            try await center.add(request)
-        } catch {
-            // Swallow — failure to schedule shouldn't block habit save.
+        var hm = Calendar.current.dateComponents([.hour, .minute], from: time)
+
+        if weekdaysOnly {
+            // One trigger per weekday — a single hour/minute trigger would fire daily.
+            for (weekday, id) in zip(weekdayReminderWeekdays, habitReminderWeekdayIDs(habitID)) {
+                hm.weekday = weekday
+                let trigger = UNCalendarNotificationTrigger(dateMatching: hm, repeats: true)
+                let request = UNNotificationRequest(identifier: id, content: content, trigger: trigger)
+                try? await center.add(request)
+            }
+        } else {
+            let trigger = UNCalendarNotificationTrigger(dateMatching: hm, repeats: true)
+            let request = UNNotificationRequest(
+                identifier: habitReminderID(habitID), content: content, trigger: trigger)
+            try? await center.add(request)
         }
     }
 
     func cancelHabitReminder(habitID: UUID) async {
-        center.removePendingNotificationRequests(withIdentifiers: [habitReminderID(habitID)])
+        center.removePendingNotificationRequests(
+            withIdentifiers: [habitReminderID(habitID)] + habitReminderWeekdayIDs(habitID))
     }
 
     func reconcileHabitReminders(active: [HabitReminderInfo]) async {
-        let validIDs = Set(active.map { habitReminderID($0.id) })
+        var validIDs = Set<String>()
+        for habit in active {
+            if habit.weekdaysOnly {
+                validIDs.formUnion(habitReminderWeekdayIDs(habit.id))
+            } else {
+                validIDs.insert(habitReminderID(habit.id))
+            }
+        }
         let pending = await center.pendingNotificationRequests()
         let stale = Self.staleHabitReminderIdentifiers(
             pending: pending.map(\.identifier),
@@ -80,7 +101,9 @@ final class RealNotificationScheduler: NotificationScheduler {
             center.removePendingNotificationRequests(withIdentifiers: stale)
         }
         for habit in active {
-            await scheduleHabitReminder(habitID: habit.id, title: habit.title, time: habit.time)
+            await scheduleHabitReminder(
+                habitID: habit.id, title: habit.title, time: habit.time,
+                weekdaysOnly: habit.weekdaysOnly)
         }
     }
 
@@ -220,7 +243,7 @@ final class RealNotificationScheduler: NotificationScheduler {
 }
 
 final class StubNotificationScheduler: NotificationScheduler {
-    func scheduleHabitReminder(habitID: UUID, title: String, time: Date) async {}
+    func scheduleHabitReminder(habitID: UUID, title: String, time: Date, weekdaysOnly: Bool) async {}
     func cancelHabitReminder(habitID: UUID) async {}
     func reconcileHabitReminders(active: [HabitReminderInfo]) async {}
     func scheduleTaskDue(taskID: UUID, title: String, at fireDate: Date) async {}

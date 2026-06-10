@@ -11,7 +11,7 @@ actor FakeNotificationScheduler: NotificationScheduler {
     private(set) var cancelledPlots: [UUID] = []
     private(set) var streakMilestones: [(habitTitle: String, streak: Int, bonus: Int)] = []
 
-    func scheduleHabitReminder(habitID: UUID, title: String, time: Date) async {
+    func scheduleHabitReminder(habitID: UUID, title: String, time: Date, weekdaysOnly: Bool) async {
         scheduled.append((habitID, title, time))
     }
 
@@ -631,6 +631,38 @@ final class LifePlannerTests: XCTestCase {
         try context.save()
 
         XCTAssertEqual(habit.currentStreak, 3)
+        XCTAssertEqual(habit.longestStreak, 3)
+    }
+
+    @MainActor
+    func test_habit_weekdaysStreakSkipsWeekend() throws {
+        let container = try ModelContainer(
+            for: DBModel.Habit.self, DBModel.HabitLogEntry.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let interactor = RealHabitsInteractor(scheduler: StubNotificationScheduler())
+
+        interactor.add(HabitDraft(title: "Standup", frequency: .weekdays), in: context)
+        try context.save()
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+
+        let cal = Calendar.current
+        func date(_ y: Int, _ m: Int, _ d: Int) -> Date {
+            cal.date(from: DateComponents(year: y, month: m, day: d))!
+        }
+        // 2026-06-04 Thu, 06-05 Fri, 06-08 Mon (06-06/07 are the weekend).
+        let thu = date(2026, 6, 4)
+        let fri = date(2026, 6, 5)
+        let mon = date(2026, 6, 8)
+        XCTAssertTrue(cal.isDateInWeekend(date(2026, 6, 6)), "precondition: 06-06 is Saturday")
+
+        interactor.toggleDone(habit, on: thu, in: context)
+        interactor.toggleDone(habit, on: fri, in: context)
+        interactor.toggleDone(habit, on: mon, in: context)
+        try context.save()
+
+        XCTAssertEqual(habit.currentStreak, 3, "Thu→Fri→Mon is an unbroken weekday streak")
         XCTAssertEqual(habit.longestStreak, 3)
     }
 
