@@ -129,9 +129,35 @@ final class RealFarmInteractor: FarmInteractor {
 
     func bootstrap(in context: ModelContext) {
         seedFarmStateIfNeeded(in: context)
+        reconcilePlots(in: context)
         seedCommonFieldIfNeeded(in: context)
         if context.hasChanges {
             try? context.save()
+        }
+    }
+
+    /// One-time data hygiene run on every launch. Removes two classes of bad
+    /// rows that an earlier harvest bug (which reset plots to `.empty` instead
+    /// of deleting them) could leave behind:
+    ///   1. Orphaned user plots — `kind != .commonField` with no bound goal.
+    ///      Goal deletion cascades to the plot, so a goalless user plot can
+    ///      only exist as leftover state. These render as a phantom extra
+    ///      "Common Field" because `PlotNode` labels any goalless plot that way.
+    ///   2. Duplicate common-field plots — keep the oldest, delete the rest.
+    private func reconcilePlots(in context: ModelContext) {
+        let allPlots = (try? context.fetch(FetchDescriptor<DBModel.FarmPlot>())) ?? []
+
+        // 1. Orphaned user plots.
+        for plot in allPlots where plot.kind != .commonField && plot.goal == nil {
+            context.delete(plot)
+        }
+
+        // 2. Duplicate common fields — keep the earliest-created one.
+        let commonFields = allPlots
+            .filter { $0.kind == .commonField }
+            .sorted { $0.createdAt < $1.createdAt }
+        for extra in commonFields.dropFirst() {
+            context.delete(extra)
         }
     }
 

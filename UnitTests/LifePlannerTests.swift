@@ -272,6 +272,34 @@ final class LifePlannerTests: XCTestCase {
     }
 
     @MainActor
+    func test_farm_bootstrapRemovesOrphanedAndDuplicatePlots() throws {
+        let context = try makeFarmContext()
+        let farm = RealFarmInteractor()
+        farm.bootstrap(in: context)   // seeds one common field
+
+        // Simulate the old harvest bug: an orphaned user plot (no goal) reset
+        // to .empty, plus a stray duplicate common field.
+        context.insert(DBModel.FarmPlot(
+            gridX: 5, kind: .crop, health: 100, state: .empty, goal: nil
+        ))
+        context.insert(DBModel.FarmPlot(
+            gridX: 0, kind: .commonField, health: 100, state: .mature,
+            createdAt: Date().addingTimeInterval(60)
+        ))
+        try context.save()
+
+        var plots = try context.fetch(FetchDescriptor<DBModel.FarmPlot>())
+        XCTAssertEqual(plots.count, 3, "precondition: orphan + duplicate present")
+
+        // Re-bootstrap should reconcile away both bad rows.
+        farm.bootstrap(in: context)
+
+        plots = try context.fetch(FetchDescriptor<DBModel.FarmPlot>())
+        XCTAssertEqual(plots.count, 1, "orphan and duplicate removed")
+        XCTAssertEqual(plots.first?.kind, .commonField, "the surviving plot is the common field")
+    }
+
+    @MainActor
     func test_farm_bindPlot_allocatesAndCapacityCaps() throws {
         let context = try makeFarmContext()
         let economy = RealEconomyInteractor()
