@@ -6,6 +6,8 @@ import SwiftData
 /// skip onboarding automatically — no regression for TestFlight upgraders.
 struct ContentView: View {
 
+    @Environment(\.injected) private var injected: DIContainer
+
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     @Query private var habits: [DBModel.Habit]
@@ -25,6 +27,11 @@ struct ContentView: View {
                     hasCompletedOnboarding = true
                     if openGoals { selectedTab = .goals }
                 }
+            }
+            // A notification deep link sets routing.selectedTab; mirror it into
+            // the TabView's binding so the correct tab comes forward.
+            .onReceive(injected.appState.updates(for: \.routing.selectedTab)) { tab in
+                if selectedTab != tab { selectedTab = tab }
             }
     }
 }

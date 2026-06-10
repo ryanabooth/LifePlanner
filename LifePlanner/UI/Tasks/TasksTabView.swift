@@ -10,6 +10,8 @@ struct TasksTabView: View {
     @State private var showAdd = false
     @State private var editing: DBModel.Task?
 
+    @Query private var allTasks: [DBModel.Task]
+
     var body: some View {
         NavigationStack {
             TaskListContent(sortOrder: sortOrder, onEdit: { editing = $0 })
@@ -31,6 +33,12 @@ struct TasksTabView: View {
                     AddTaskSheet(existing: task) { draft in
                         injected.interactors.tasks.update(task, with: draft, in: modelContext)
                     }
+                }
+                .onReceive(injected.appState.updates(for: \.routing.pendingDeepLink)) { target in
+                    guard case .task(let id)? = target,
+                          let task = allTasks.first(where: { $0.id == id }) else { return }
+                    editing = task
+                    injected.appState[\.routing.pendingDeepLink] = nil
                 }
         }
     }

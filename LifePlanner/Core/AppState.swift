@@ -9,7 +9,18 @@ struct AppState: Equatable {
 extension AppState {
     struct ViewRouting: Equatable {
         var selectedTab: MainTab = .farm
+        /// Set by a notification deep link; consumed (and cleared) by the tab
+        /// that owns the entity so it can present the detail/edit screen.
+        var pendingDeepLink: DeepLinkTarget? = nil
     }
+}
+
+/// An entity a notification tap should surface. Tab routing is derived from the
+/// case, so handling one of these both switches tabs and opens the detail.
+enum DeepLinkTarget: Equatable {
+    case habit(UUID)
+    case task(UUID)
+    case farm
 }
 
 extension AppState {

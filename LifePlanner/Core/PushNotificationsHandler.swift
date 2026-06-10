@@ -25,6 +25,11 @@ extension RealPushNotificationsHandler: UNUserNotificationCenterDelegate {
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                                 didReceive response: UNNotificationResponse,
                                 withCompletionHandler completionHandler: @escaping () -> Void) {
+        let identifier = response.notification.request.identifier
+        if let deepLink = DeepLink(notificationIdentifier: identifier) {
+            let handler = deepLinksHandler
+            Task { @MainActor in handler.open(deepLink: deepLink) }
+        }
         completionHandler()
     }
 }
