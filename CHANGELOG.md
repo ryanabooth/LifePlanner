@@ -11,6 +11,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - **Weekdays habit cadence** — habits can now repeat Monday–Friday only. Weekends don't break the streak (Fri→Mon counts as consecutive) and don't nag. Reminders for weekdays habits fire Mon–Fri only. Schema bumped to v0.16.0
+- **Reminder time on the habits list** — habits with a reminder now show the time next to the bell icon in the second row (was just the bell icon)
 
 ### Changed
 - Withering now lasts 1 day before a plot dies (was 3), so neglect has faster consequences
