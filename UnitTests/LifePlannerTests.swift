@@ -219,6 +219,26 @@ final class LifePlannerTests: XCTestCase {
     // MARK: - Economy + Farm
 
     @MainActor
+    func test_deepLink_parsesNotificationIdentifiers() {
+        let id = UUID()
+        XCTAssertEqual(
+            DeepLink(notificationIdentifier: "habit-reminder-\(id.uuidString)"),
+            .habit(id))
+        // Weekday-variant identifier (…-wd<n>) still resolves to the same habit.
+        XCTAssertEqual(
+            DeepLink(notificationIdentifier: "habit-reminder-\(id.uuidString)-wd3"),
+            .habit(id))
+        XCTAssertEqual(
+            DeepLink(notificationIdentifier: "task-due-\(id.uuidString)"),
+            .task(id))
+        XCTAssertEqual(
+            DeepLink(notificationIdentifier: "plot-alert-\(id.uuidString)"),
+            .farm)
+        // Unknown / informational identifiers don't produce a deep link.
+        XCTAssertNil(DeepLink(notificationIdentifier: "streak-milestone"))
+        XCTAssertNil(DeepLink(notificationIdentifier: "habit-reminder-not-a-uuid"))
+    }
+
     private func makeFarmContext() throws -> ModelContext {
         let container = try ModelContainer(
             for: DBModel.FarmState.self, DBModel.FarmPlot.self, DBModel.Goal.self,

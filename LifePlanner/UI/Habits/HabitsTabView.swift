@@ -52,6 +52,12 @@ struct HabitsTabView: View {
                     injected.interactors.habits.update(habit, with: draft, in: modelContext)
                 }
             }
+            .onReceive(injected.appState.updates(for: \.routing.pendingDeepLink)) { target in
+                guard case .habit(let id)? = target,
+                      let habit = activeHabits.first(where: { $0.id == id }) else { return }
+                editing = habit
+                injected.appState[\.routing.pendingDeepLink] = nil
+            }
         }
     }
 
