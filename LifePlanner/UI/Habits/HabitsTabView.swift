@@ -110,9 +110,13 @@ private struct HabitRow: View {
                             .foregroundStyle(weekComplete ? .secondary : .primary)
                         HStack(spacing: 6) {
                             Text(cadenceLabel)
-                            if habit.reminderTime != nil {
-                                Image(systemName: "bell.fill")
-                                    .accessibilityLabel("reminder set")
+                            if let reminderTime = habit.reminderTime {
+                                HStack(spacing: 3) {
+                                    Image(systemName: "bell.fill")
+                                    Text(reminderTime, format: .dateTime.hour().minute())
+                                }
+                                .accessibilityElement(children: .ignore)
+                                .accessibilityLabel("reminder at \(reminderTime.formatted(.dateTime.hour().minute()))")
                             }
                         }
                         .font(.caption)
@@ -153,7 +157,9 @@ private struct HabitRow: View {
 
     private var editButtonAccessibilityLabel: String {
         var parts = [habit.title, cadenceLabel]
-        if habit.reminderTime != nil { parts.append("reminder set") }
+        if let reminderTime = habit.reminderTime {
+            parts.append("reminder at \(reminderTime.formatted(.dateTime.hour().minute()))")
+        }
         if habit.currentStreak >= 1 { parts.append("\(habit.currentStreak) day streak") }
         parts.append("Edit")
         return parts.joined(separator: ", ")
