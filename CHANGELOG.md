@@ -9,6 +9,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Build 19] — pending TestFlight
 
+### Changed
+- Withering now lasts 1 day before a plot dies (was 3), so neglect has faster consequences
+- Dead plots now block linked habit/task completion in the plot detail view until replanted, with a "Re-plant this plot to resume…" note (contributions already no-op'd on dead plots; this makes it visible)
+
 ### Fixed
 - Phantom second "Common Field" — launch-time reconcile now removes orphaned user plots (no bound goal) and any duplicate common-field rows left behind by the earlier harvest bug. Any plot without a goal had been rendering as an extra "Common Field"
 

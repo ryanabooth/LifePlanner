@@ -18,7 +18,7 @@ enum FarmTuning {
     static let matureThreshold = 80
     static let initialHealth = 50
     static let decayPerDay = 10
-    static let daysWitheredBeforeDeath = 3
+    static let daysWitheredBeforeDeath = 1
 
     // Contribution amounts.
     static let habitContribution = 20
