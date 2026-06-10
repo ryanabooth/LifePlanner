@@ -7,7 +7,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-## [Build 18] — pending TestFlight
+## [Build 19] — pending TestFlight
+
+### Fixed
+- Phantom second "Common Field" — launch-time reconcile now removes orphaned user plots (no bound goal) and any duplicate common-field rows left behind by the earlier harvest bug. Any plot without a goal had been rendering as an extra "Common Field"
+
+## [Build 18] — 2026-05-28
 
 ### Fixed
 - Harvested plot appeared as a second Common Field — plot is now deleted from the model context on harvest, freeing the capacity slot and removing it from the farm scene immediately
