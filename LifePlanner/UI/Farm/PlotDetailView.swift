@@ -169,8 +169,8 @@ struct PlotDetailView: View {
             statsSection(plot: plot)
 
             if let goal = plot.goal {
-                habitsSection(goal: goal)
-                tasksSection(goal: goal)
+                habitsSection(goal: goal, locked: plot.state == .dead)
+                tasksSection(goal: goal, locked: plot.state == .dead)
             } else {
                 commonFieldHabitsSection
                 commonFieldTasksSection
@@ -208,7 +208,7 @@ struct PlotDetailView: View {
         }
     }
 
-    private func tasksSection(goal: DBModel.Goal) -> some View {
+    private func tasksSection(goal: DBModel.Goal, locked: Bool) -> some View {
         Section {
             let linked = (goal.linkedTasks ?? []).sorted { !$0.isDone && $1.isDone }
             if linked.isEmpty {
@@ -231,6 +231,7 @@ struct PlotDetailView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .disabled(locked)
                     .accessibilityLabel(task.isDone ? "Reopen \(task.title)" : "Mark complete: \(task.title)")
                 }
             }
@@ -242,10 +243,14 @@ struct PlotDetailView: View {
                 onLink: { showingTaskPicker = true },
                 onCreate: { showingNewTask = true }
             )
+        } footer: {
+            if locked {
+                Text("Re-plant this plot to resume completing tasks.")
+            }
         }
     }
 
-    private func habitsSection(goal: DBModel.Goal) -> some View {
+    private func habitsSection(goal: DBModel.Goal, locked: Bool) -> some View {
         Section {
             let linked = (goal.linkedHabits ?? []).sorted { !$0.isDone(on: Date()) && $1.isDone(on: Date()) }
             if linked.isEmpty {
@@ -267,6 +272,7 @@ struct PlotDetailView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .disabled(locked)
                     .accessibilityLabel(habit.isDone(on: Date()) ? "Undo log: \(habit.title)" : "Log habit: \(habit.title)")
                 }
             }
