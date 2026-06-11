@@ -17,9 +17,11 @@ struct AddHabitSheet: View {
     @State private var draft: HabitDraft
     @State private var includeReminder: Bool
     private let isEditing: Bool
+    private let existingHabit: DBModel.Habit?
     private let onSave: (HabitDraft) -> Void
 
     init(existing: DBModel.Habit? = nil, initialGoalID: UUID? = nil, onSave: @escaping (HabitDraft) -> Void) {
+        self.existingHabit = existing
         if let existing {
             _draft = State(initialValue: HabitDraft(
                 title: existing.title,
@@ -95,6 +97,15 @@ struct AddHabitSheet: View {
                             ForEach(linkableGoals) { goal in
                                 Text(goal.title).tag(UUID?.some(goal.id))
                             }
+                        }
+                    }
+                }
+                if let existingHabit {
+                    Section {
+                        NavigationLink {
+                            HabitCalendarView(habit: existingHabit)
+                        } label: {
+                            Label("View history", systemImage: "calendar")
                         }
                     }
                 }

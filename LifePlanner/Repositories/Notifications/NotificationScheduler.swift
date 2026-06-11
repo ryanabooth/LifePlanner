@@ -18,6 +18,10 @@ protocol NotificationScheduler: Sendable {
     func reconcileHabitReminders(active: [HabitReminderInfo]) async
     func scheduleTaskDue(taskID: UUID, title: String, at fireDate: Date) async
     func cancelTaskDue(taskID: UUID) async
+    /// Schedule (or replace) a daily evening nudge to log habits before the day
+    /// ends. `cancelEndOfDayReminder` removes it.
+    func scheduleEndOfDayReminder(at time: Date) async
+    func cancelEndOfDayReminder() async
     /// Schedule (or replace) a next-morning alert for a plot state change.
     func schedulePlotAlert(plotID: UUID, title: String, body: String, fireAt: Date) async
     func cancelPlotAlert(plotID: UUID) async
@@ -37,6 +41,9 @@ extension NotificationScheduler {
     }
     func taskDueID(_ taskID: UUID) -> String { "task-due-\(taskID.uuidString)" }
     func plotAlertID(_ plotID: UUID) -> String { "plot-alert-\(plotID.uuidString)" }
+    /// Deliberately not prefixed "habit" so the habit-reminder reconcile pass
+    /// doesn't treat it as a stale habit reminder and remove it.
+    var endOfDayReminderID: String { "streak-eod-reminder" }
 }
 
 final class RealNotificationScheduler: NotificationScheduler {
@@ -81,6 +88,28 @@ final class RealNotificationScheduler: NotificationScheduler {
     func cancelHabitReminder(habitID: UUID) async {
         center.removePendingNotificationRequests(
             withIdentifiers: [habitReminderID(habitID)] + habitReminderWeekdayIDs(habitID))
+    }
+
+    func scheduleEndOfDayReminder(at time: Date) async {
+        guard UserDefaults.standard.object(forKey: "notif.habitReminders") as? Bool ?? true else { return }
+        guard await ensureAuthorized() else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = "Keep your streaks alive"
+        content.body = "Log today's habits before the day ends."
+        content.sound = .default
+        content.categoryIdentifier = "habit-reminder"
+
+        let comps = Calendar.current.dateComponents([.hour, .minute], from: time)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
+        let request = UNNotificationRequest(
+            identifier: endOfDayReminderID, content: content, trigger: trigger)
+        center.removePendingNotificationRequests(withIdentifiers: [endOfDayReminderID])
+        try? await center.add(request)
+    }
+
+    func cancelEndOfDayReminder() async {
+        center.removePendingNotificationRequests(withIdentifiers: [endOfDayReminderID])
     }
 
     func reconcileHabitReminders(active: [HabitReminderInfo]) async {
@@ -244,6 +273,8 @@ final class RealNotificationScheduler: NotificationScheduler {
 
 final class StubNotificationScheduler: NotificationScheduler {
     func scheduleHabitReminder(habitID: UUID, title: String, time: Date, weekdaysOnly: Bool) async {}
+    func scheduleEndOfDayReminder(at time: Date) async {}
+    func cancelEndOfDayReminder() async {}
     func cancelHabitReminder(habitID: UUID) async {}
     func reconcileHabitReminders(active: [HabitReminderInfo]) async {}
     func scheduleTaskDue(taskID: UUID, title: String, at fireDate: Date) async {}
