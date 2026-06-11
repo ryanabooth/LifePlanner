@@ -75,7 +75,19 @@ struct RealSystemEventsHandler: SystemEventsHandler {
             try? context.save()
         }
         reconcileHabitReminders(in: context)
+        applyEndOfDayReminderSetting()
         Task.detached { await SpotlightIndexer.shared.reindexAll(in: context) }
+    }
+
+    /// Re-assert the end-of-day streak reminder from persisted settings so it
+    /// survives reinstalls and notification-permission changes.
+    private func applyEndOfDayReminderSetting() {
+        let defaults = UserDefaults.standard
+        let enabled = defaults.bool(forKey: "notif.endOfDayReminder")
+        let stored = defaults.object(forKey: "notif.endOfDayReminderTime") as? Double
+        let time = stored.map { Date(timeIntervalSinceReferenceDate: $0) }
+            ?? Calendar.current.date(bySettingHour: 20, minute: 0, second: 0, of: Date()) ?? Date()
+        container.interactors.habits.setEndOfDayReminder(enabled: enabled, time: time)
     }
 
     /// Clear orphaned habit reminders (e.g. left behind by an older build) and

@@ -13,6 +13,11 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Weekdays habit cadence** — habits can now repeat Monday–Friday only. Weekends don't break the streak (Fri→Mon counts as consecutive) and don't nag. Reminders for weekdays habits fire Mon–Fri only. Schema bumped to v0.16.0
 - **Reminder time on the habits list** — habits with a reminder now show the time next to the bell icon in the second row (was just the bell icon)
 - **Deep links from notifications** — tapping a habit reminder opens that habit's editor, a task due alert opens that task's editor, and a farm plot alert switches to the Farm tab
+- **Habit history calendar** — the habit editor now has a "View history" link showing a month-grid calendar of completed days, with month paging and a streak badge
+- **End-of-day streak reminder** — opt-in daily evening nudge (Settings → Notifications, default 8 PM) to log habits before the day ends
+
+### Fixed
+- Un-logging a habit now correctly decreases its streak. SwiftData wasn't pruning the deleted entry from the in-memory relationship, so the streak previously stayed put when you reversed a completion
 
 ### Changed
 - Withering now lasts 1 day before a plot dies (was 3), so neglect has faster consequences

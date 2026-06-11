@@ -18,6 +18,8 @@ protocol HabitsInteractor {
     func setArchived(_ habit: DBModel.Habit, archived: Bool, in context: ModelContext)
     func delete(_ habit: DBModel.Habit, in context: ModelContext)
     func toggleDone(_ habit: DBModel.Habit, on day: Date, in context: ModelContext)
+    /// Enable or disable the daily end-of-day "keep your streaks alive" reminder.
+    func setEndOfDayReminder(enabled: Bool, time: Date)
 }
 
 enum StreakTuning {
@@ -110,6 +112,11 @@ final class RealHabitsInteractor: HabitsInteractor {
 
     func toggleDone(_ habit: DBModel.Habit, on day: Date, in context: ModelContext) {
         if let existing = habit.entry(on: day, calendar: calendar) {
+            // Remove from the relationship array *before* deleting: SwiftData
+            // doesn't synchronously prune a deleted object from the in-memory
+            // inverse collection, so recomputeStreak would otherwise still see
+            // today as logged and the streak wouldn't decrease.
+            habit.entries?.removeAll { $0.id == existing.id }
             context.delete(existing)
             // Reversing a completion does not refund health — the contribution
             // already affected the plot's lastContribution timestamp. Keeping
@@ -133,6 +140,16 @@ final class RealHabitsInteractor: HabitsInteractor {
         context.saveQuietly()
     }
 
+    func setEndOfDayReminder(enabled: Bool, time: Date) {
+        Task.detached { [scheduler] in
+            if enabled {
+                await scheduler.scheduleEndOfDayReminder(at: time)
+            } else {
+                await scheduler.cancelEndOfDayReminder()
+            }
+        }
+    }
+
     // MARK: - Streak helpers
 
     private func recomputeStreak(for habit: DBModel.Habit, on baseDay: Date) {
@@ -153,6 +170,13 @@ final class RealHabitsInteractor: HabitsInteractor {
         let entryDays = Set((habit.entries ?? []).map { calendar.startOfDay(for: $0.date) })
         var streak = 0
         var expected = calendar.startOfDay(for: baseDay)
+        // Grace pass: if `baseDay` isn't logged (e.g. the user just un-logged
+        // today, or today is simply still pending), measure the run ending the
+        // day before instead of collapsing the whole streak to zero.
+        if !entryDays.contains(expected),
+           let prev = calendar.date(byAdding: .day, value: -1, to: expected) {
+            expected = prev
+        }
         while entryDays.contains(expected) {
             streak += 1
             guard let prev = calendar.date(byAdding: .day, value: -1, to: expected) else { break }
@@ -172,6 +196,16 @@ final class RealHabitsInteractor: HabitsInteractor {
         // Skip back over any trailing weekend days to the latest weekday.
         while calendar.isDateInWeekend(expected) {
             guard let prev = calendar.date(byAdding: .day, value: -1, to: expected) else { return 0 }
+            expected = prev
+        }
+        // Grace pass: an unlogged latest weekday (today pending or just un-logged)
+        // measures the run ending the previous weekday rather than collapsing to 0.
+        if !entryDays.contains(expected) {
+            guard var prev = calendar.date(byAdding: .day, value: -1, to: expected) else { return 0 }
+            while calendar.isDateInWeekend(prev) {
+                guard let earlier = calendar.date(byAdding: .day, value: -1, to: prev) else { return 0 }
+                prev = earlier
+            }
             expected = prev
         }
         while entryDays.contains(expected) {
@@ -274,6 +308,7 @@ final class StubHabitsInteractor: HabitsInteractor {
     func setArchived(_ habit: DBModel.Habit, archived: Bool, in context: ModelContext) {}
     func delete(_ habit: DBModel.Habit, in context: ModelContext) {}
     func toggleDone(_ habit: DBModel.Habit, on day: Date, in context: ModelContext) {}
+    func setEndOfDayReminder(enabled: Bool, time: Date) {}
 }
 
 private extension String {

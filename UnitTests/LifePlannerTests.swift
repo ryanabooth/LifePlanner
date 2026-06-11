@@ -31,6 +31,17 @@ actor FakeNotificationScheduler: NotificationScheduler {
         cancelledTasks.append(taskID)
     }
 
+    private(set) var endOfDayReminderTimes: [Date] = []
+    private(set) var endOfDayCancelled = false
+
+    func scheduleEndOfDayReminder(at time: Date) async {
+        endOfDayReminderTimes.append(time)
+    }
+
+    func cancelEndOfDayReminder() async {
+        endOfDayCancelled = true
+    }
+
     func schedulePlotAlert(plotID: UUID, title: String, body: String, fireAt: Date) async {
         plotAlerts.append((plotID, title))
     }
@@ -684,6 +695,35 @@ final class LifePlannerTests: XCTestCase {
 
         XCTAssertEqual(habit.currentStreak, 3, "Thu→Fri→Mon is an unbroken weekday streak")
         XCTAssertEqual(habit.longestStreak, 3)
+    }
+
+    @MainActor
+    func test_habit_untoggleTodayDecreasesStreakByOne() throws {
+        let container = try ModelContainer(
+            for: DBModel.Habit.self, DBModel.HabitLogEntry.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let interactor = RealHabitsInteractor(scheduler: StubNotificationScheduler())
+
+        interactor.add(HabitDraft(title: "Floss"), in: context)
+        try context.save()
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        // Build a 5-day streak ending today.
+        for back in stride(from: 4, through: 0, by: -1) {
+            interactor.toggleDone(habit, on: cal.date(byAdding: .day, value: -back, to: today)!, in: context)
+        }
+        try context.save()
+        XCTAssertEqual(habit.currentStreak, 5)
+
+        // Un-log today — the streak should drop to 4 (the run ending yesterday),
+        // not collapse to 0.
+        interactor.toggleDone(habit, on: today, in: context)
+        try context.save()
+        XCTAssertEqual(habit.currentStreak, 4, "un-logging today decreases the streak by one")
     }
 
     @MainActor

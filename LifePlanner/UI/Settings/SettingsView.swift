@@ -8,7 +8,25 @@ struct SettingsView: View {
     @AppStorage("notif.taskDue")          private var taskDue           = true
     @AppStorage("notif.plotAlerts")       private var plotAlerts        = true
     @AppStorage("notif.streakMilestones") private var streakMilestones  = true
+    @AppStorage("notif.endOfDayReminder") private var endOfDayReminder  = false
+    @AppStorage("notif.endOfDayReminderTime") private var endOfDayReminderTime = Self.defaultEndOfDayTime
     @AppStorage("farm.vacationMode")      private var vacationMode      = false
+
+    /// 8:00 PM, stored as seconds since reference date so it fits in @AppStorage.
+    private static var defaultEndOfDayTime: Double {
+        var comps = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        comps.hour = 20
+        comps.minute = 0
+        let date = Calendar.current.date(from: comps) ?? Date()
+        return date.timeIntervalSinceReferenceDate
+    }
+
+    private var endOfDayDate: Binding<Date> {
+        Binding(
+            get: { Date(timeIntervalSinceReferenceDate: endOfDayReminderTime) },
+            set: { endOfDayReminderTime = $0.timeIntervalSinceReferenceDate }
+        )
+    }
 
     @Environment(\.injected) private var injected
     @Environment(\.modelContext) private var modelContext
@@ -66,6 +84,10 @@ struct SettingsView: View {
             Toggle("Task due alerts",   isOn: $taskDue)
             Toggle("Farm plot alerts",  isOn: $plotAlerts)
             Toggle("Streak milestones", isOn: $streakMilestones)
+            Toggle("End-of-day streak reminder", isOn: $endOfDayReminder)
+            if endOfDayReminder {
+                DatePicker("Remind me at", selection: endOfDayDate, displayedComponents: [.hourAndMinute])
+            }
             Button("Open notification settings…") {
                 if let url = URL(string: UIApplication.openNotificationSettingsURLString) {
                     UIApplication.shared.open(url)
@@ -73,6 +95,20 @@ struct SettingsView: View {
             }
         } header: {
             Text("Notifications")
+        } footer: {
+            if endOfDayReminder {
+                Text("A daily nudge to log your habits before the day ends and a streak breaks.")
+            }
+        }
+        .onChange(of: endOfDayReminder) { _, on in
+            injected.interactors.habits.setEndOfDayReminder(
+                enabled: on, time: endOfDayDate.wrappedValue)
+        }
+        .onChange(of: endOfDayReminderTime) { _, _ in
+            if endOfDayReminder {
+                injected.interactors.habits.setEndOfDayReminder(
+                    enabled: true, time: endOfDayDate.wrappedValue)
+            }
         }
     }
 
