@@ -104,6 +104,16 @@ extension DBModel {
             }
         }
 
+        /// True if this habit was scheduled on `day`, isn't logged for it, and
+        /// the cadence target for that period isn't otherwise met — i.e. a
+        /// candidate for the once-a-day "log yesterday's habits" back-fill prompt.
+        func wasMissed(on day: Date, calendar: Calendar = .current) -> Bool {
+            !archived
+                && isDue(on: day, calendar: calendar)
+                && !isDone(on: day, calendar: calendar)
+                && !isWeekComplete(containing: day, calendar: calendar)
+        }
+
         /// True if the week containing `day` meets the cadence target.
         /// Daily habits require a log on `day`; weekly habits require `weeklyTarget`
         /// entries that week; weekdays habits require a log on `day` when it's a
