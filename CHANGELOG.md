@@ -15,6 +15,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Deep links from notifications** — tapping a habit reminder opens that habit's editor, a task due alert opens that task's editor, and a farm plot alert switches to the Farm tab
 - **Habit history calendar** — the habit editor now has a "View history" link showing a month-grid calendar of completed days, with month paging and a streak badge
 - **End-of-day streak reminder** — opt-in daily evening nudge (Settings → Notifications, default 8 PM) to log habits before the day ends
+- **Back-fill yesterday's habits** — on the first app open each day, a prompt lists habits that were due yesterday but weren't logged (for the late-night flosser who forgets), letting you check them off retroactively so streaks stay intact
 
 ### Fixed
 - Un-logging a habit now correctly decreases its streak. SwiftData wasn't pruning the deleted entry from the in-memory relationship, so the streak previously stayed put when you reversed a completion

@@ -698,6 +698,42 @@ final class LifePlannerTests: XCTestCase {
     }
 
     @MainActor
+    func test_habit_wasMissed_backfillCandidates() throws {
+        let container = try ModelContainer(
+            for: DBModel.Habit.self, DBModel.HabitLogEntry.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let cal = Calendar.current
+
+        // Pick a known weekday (Wednesday) so the weekdays-cadence assertions
+        // don't depend on when the test runs.
+        let wed = cal.date(from: DateComponents(year: 2026, month: 6, day: 3))!
+        XCTAssertFalse(cal.isDateInWeekend(wed), "precondition: 2026-06-03 is a weekday")
+        let sun = cal.date(from: DateComponents(year: 2026, month: 6, day: 7))!
+        XCTAssertTrue(cal.isDateInWeekend(sun), "precondition: 2026-06-07 is a weekend")
+
+        let daily = DBModel.Habit(title: "Floss", frequency: .daily)
+        context.insert(daily)
+        XCTAssertTrue(daily.wasMissed(on: wed, calendar: cal), "unlogged daily habit was missed")
+
+        // Logging it for that day clears the candidate.
+        context.insert(DBModel.HabitLogEntry(date: cal.startOfDay(for: wed), habit: daily))
+        XCTAssertFalse(daily.wasMissed(on: wed, calendar: cal), "logged habit is not a candidate")
+
+        // Weekdays habit isn't a candidate on a weekend (not due then).
+        let weekdays = DBModel.Habit(title: "Standup", frequency: .weekdays)
+        context.insert(weekdays)
+        XCTAssertTrue(weekdays.wasMissed(on: wed, calendar: cal), "missed on a weekday")
+        XCTAssertFalse(weekdays.wasMissed(on: sun, calendar: cal), "not due on a weekend")
+
+        // Archived habits are never candidates.
+        let archived = DBModel.Habit(title: "Old", frequency: .daily, archived: true)
+        context.insert(archived)
+        XCTAssertFalse(archived.wasMissed(on: wed, calendar: cal))
+    }
+
+    @MainActor
     func test_habit_untoggleTodayDecreasesStreakByOne() throws {
         let container = try ModelContainer(
             for: DBModel.Habit.self, DBModel.HabitLogEntry.self,
