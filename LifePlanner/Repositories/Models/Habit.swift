@@ -114,6 +114,32 @@ extension DBModel {
                 && !isWeekComplete(containing: day, calendar: calendar)
         }
 
+        /// The most recent day *before* `today` on which this habit was scheduled
+        /// and still isn't logged — the day the back-fill prompt should offer to
+        /// fill in. Returns nil if the most recent scheduled day is already
+        /// satisfied, or the habit is archived.
+        ///
+        /// This walks back to the last *due* day rather than assuming "yesterday",
+        /// so a weekdays-only habit surfaces its missed Friday when opened on a
+        /// Monday (Saturday/Sunday aren't scheduled days for it).
+        func mostRecentMissedDay(before today: Date, calendar: Calendar = .current) -> Date? {
+            guard !archived else { return nil }
+            let start = calendar.startOfDay(for: today)
+            // Look back up to a week to find the latest scheduled day.
+            for back in 1...7 {
+                guard let day = calendar.date(byAdding: .day, value: -back, to: start) else { break }
+                guard isDue(on: day, calendar: calendar) else { continue }
+                // Found the most recent scheduled day; it's a candidate only if
+                // it's unlogged and the period's target isn't otherwise met.
+                if !isDone(on: day, calendar: calendar),
+                   !isWeekComplete(containing: day, calendar: calendar) {
+                    return day
+                }
+                return nil
+            }
+            return nil
+        }
+
         /// True if the week containing `day` meets the cadence target.
         /// Daily habits require a log on `day`; weekly habits require `weeklyTarget`
         /// entries that week; weekdays habits require a log on `day` when it's a

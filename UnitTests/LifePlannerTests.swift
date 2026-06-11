@@ -734,6 +734,42 @@ final class LifePlannerTests: XCTestCase {
     }
 
     @MainActor
+    func test_habit_mostRecentMissedDay_weekdaysSkipWeekend() throws {
+        let container = try ModelContainer(
+            for: DBModel.Habit.self, DBModel.HabitLogEntry.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let cal = Calendar.current
+
+        // 2026-06-08 is a Monday; the previous scheduled weekday is Fri 06-05.
+        let monday = cal.date(from: DateComponents(year: 2026, month: 6, day: 8))!
+        let friday = cal.startOfDay(for: cal.date(from: DateComponents(year: 2026, month: 6, day: 5))!)
+        XCTAssertFalse(cal.isDateInWeekend(monday))
+
+        // A weekdays habit opened Monday surfaces its missed Friday, not Sunday.
+        let weekdays = DBModel.Habit(title: "Standup", frequency: .weekdays)
+        context.insert(weekdays)
+        XCTAssertEqual(
+            weekdays.mostRecentMissedDay(before: monday, calendar: cal).map { cal.startOfDay(for: $0) },
+            friday,
+            "weekdays habit looks back past the weekend to Friday")
+
+        // Logging Friday clears the candidate.
+        context.insert(DBModel.HabitLogEntry(date: friday, habit: weekdays))
+        XCTAssertNil(weekdays.mostRecentMissedDay(before: monday, calendar: cal))
+
+        // A daily habit's most recent missed day is simply yesterday (Sunday).
+        let sunday = cal.startOfDay(for: cal.date(from: DateComponents(year: 2026, month: 6, day: 7))!)
+        let daily = DBModel.Habit(title: "Floss", frequency: .daily)
+        context.insert(daily)
+        XCTAssertEqual(
+            daily.mostRecentMissedDay(before: monday, calendar: cal).map { cal.startOfDay(for: $0) },
+            sunday,
+            "daily habit's most recent missed day is yesterday")
+    }
+
+    @MainActor
     func test_habit_untoggleTodayDecreasesStreakByOne() throws {
         let container = try ModelContainer(
             for: DBModel.Habit.self, DBModel.HabitLogEntry.self,
