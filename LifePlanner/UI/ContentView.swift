@@ -19,7 +19,7 @@ struct ContentView: View {
     @Query private var goals:  [DBModel.Goal]
 
     @State private var selectedTab: MainTab = .farm
-    @State private var backfillHabits: [DBModel.Habit] = []
+    @State private var backfillItems: [BackfillItem] = []
     @State private var showBackfillPrompt = false
 
     private let calendar = Calendar.current
@@ -28,14 +28,15 @@ struct ContentView: View {
         !hasCompletedOnboarding && habits.isEmpty && tasks.isEmpty && goals.isEmpty
     }
 
-    private var yesterday: Date {
-        calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: Date())) ?? Date()
-    }
-
-    /// Habits that were due yesterday and still aren't logged for it.
-    private func unloggedYesterdayHabits() -> [DBModel.Habit] {
-        let day = yesterday
-        return habits.filter { $0.wasMissed(on: day, calendar: calendar) }
+    /// One back-fill item per habit whose most recent *scheduled* day before
+    /// today is still unlogged. Walks back to the last due day, so a weekdays
+    /// habit surfaces its missed Friday when opened on a Monday.
+    private func backfillCandidates() -> [BackfillItem] {
+        let now = Date()
+        return habits.compactMap { habit in
+            guard let day = habit.mostRecentMissedDay(before: now, calendar: calendar) else { return nil }
+            return BackfillItem(habit: habit, day: day)
+        }
     }
 
     var body: some View {
@@ -47,7 +48,7 @@ struct ContentView: View {
                 }
             }
             .sheet(isPresented: $showBackfillPrompt) {
-                DailyHabitLogSheet(day: yesterday, habits: backfillHabits)
+                DailyHabitLogSheet(items: backfillItems)
             }
             // A notification deep link sets routing.selectedTab; mirror it into
             // the TabView's binding so the correct tab comes forward.
@@ -66,9 +67,9 @@ struct ContentView: View {
         guard !shouldShowOnboarding, !showBackfillPrompt else { return }
         let today = calendar.startOfDay(for: Date()).timeIntervalSinceReferenceDate
         guard today != lastPromptDay else { return }
-        let candidates = unloggedYesterdayHabits()
+        let candidates = backfillCandidates()
         guard !candidates.isEmpty else { return }
-        backfillHabits = candidates
+        backfillItems = candidates
         showBackfillPrompt = true
         lastPromptDay = today
     }
