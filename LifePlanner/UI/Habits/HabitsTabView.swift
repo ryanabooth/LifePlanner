@@ -14,6 +14,8 @@ struct HabitsTabView: View {
 
     @State private var showAdd = false
     @State private var editing: DBModel.Habit?
+    /// Set by a habit reminder deep link to scroll that habit into view.
+    @State private var scrollTarget: UUID?
 
     var body: some View {
         NavigationStack {
@@ -25,9 +27,16 @@ struct HabitsTabView: View {
                         description: Text("Tap + to add a daily habit.")
                     )
                 } else {
-                    List {
-                        Section("Today") {
-                            ForEach(activeHabits) { row(for: $0) }
+                    ScrollViewReader { proxy in
+                        List {
+                            Section("Today") {
+                                ForEach(activeHabits) { row(for: $0).id($0.id) }
+                            }
+                        }
+                        .onChange(of: scrollTarget) { _, target in
+                            guard let target else { return }
+                            withAnimation { proxy.scrollTo(target, anchor: .center) }
+                            scrollTarget = nil
                         }
                     }
                 }
@@ -52,10 +61,13 @@ struct HabitsTabView: View {
                     injected.interactors.habits.update(habit, with: draft, in: modelContext)
                 }
             }
+            // A habit reminder deep link lands on the Habits page (where the row
+            // toggle can mark it done) rather than opening the edit form — you
+            // can't log a habit from the editor. Scroll the habit into view.
             .onReceive(injected.appState.updates(for: \.routing.pendingDeepLink)) { target in
                 guard case .habit(let id)? = target,
-                      let habit = activeHabits.first(where: { $0.id == id }) else { return }
-                editing = habit
+                      activeHabits.contains(where: { $0.id == id }) else { return }
+                scrollTarget = id
                 injected.appState[\.routing.pendingDeepLink] = nil
             }
         }
