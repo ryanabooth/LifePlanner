@@ -20,6 +20,10 @@ protocol HabitsInteractor {
     func toggleDone(_ habit: DBModel.Habit, on day: Date, in context: ModelContext)
     /// Enable or disable the daily end-of-day "keep your streaks alive" reminder.
     func setEndOfDayReminder(enabled: Bool, time: Date)
+    /// Recompute every active habit's `currentStreak` as of `day`. `currentStreak`
+    /// is otherwise only updated on toggle, so a streak goes stale (stays high)
+    /// once a scheduled day passes unlogged. Call on launch to keep it honest.
+    func refreshStreaks(asOf day: Date, in context: ModelContext)
 }
 
 enum StreakTuning {
@@ -144,6 +148,20 @@ final class RealHabitsInteractor: HabitsInteractor {
         checkStreakMilestone(for: habit, in: context)
         achievements.checkAll(in: context)
         context.saveQuietly()
+    }
+
+    func refreshStreaks(asOf day: Date, in context: ModelContext) {
+        let descriptor = FetchDescriptor<DBModel.Habit>(
+            predicate: #Predicate { !$0.archived }
+        )
+        let habits = (try? context.fetch(descriptor)) ?? []
+        for habit in habits {
+            let previous = habit.currentStreak
+            recomputeStreak(for: habit, on: day)
+            // recomputeStreak only grows longestStreak; currentStreak may drop.
+            if habit.currentStreak != previous { habit.updatedAt = Date() }
+        }
+        if context.hasChanges { context.saveQuietly() }
     }
 
     func setEndOfDayReminder(enabled: Bool, time: Date) {
@@ -315,6 +333,7 @@ final class StubHabitsInteractor: HabitsInteractor {
     func delete(_ habit: DBModel.Habit, in context: ModelContext) {}
     func toggleDone(_ habit: DBModel.Habit, on day: Date, in context: ModelContext) {}
     func setEndOfDayReminder(enabled: Bool, time: Date) {}
+    func refreshStreaks(asOf day: Date, in context: ModelContext) {}
 }
 
 private extension String {
