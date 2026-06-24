@@ -17,6 +17,9 @@ struct TasksTabView: View {
             TaskListContent(sortOrder: sortOrder, onEdit: { editing = $0 })
                 .navigationTitle("Tasks")
                 .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        EditButton()
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { showAdd = true } label: { Image(systemName: "plus") }
                     }
@@ -89,18 +92,25 @@ private struct TaskListContent: View {
         case .dueDate:
             openTasksRaw.sorted {
                 switch ($0.dueDate, $1.dueDate) {
-                case let (a?, b?): return a < b
+                case let (a?, b?) where a != b: return a < b
                 case (_?, nil):   return true
                 case (nil, _?):   return false
-                case (nil, nil):  return $0.createdAt > $1.createdAt
+                default:          return manualThenCreated($0, $1)
                 }
             }
         case .priority:
             openTasksRaw.sorted {
                 if $0.priorityRaw != $1.priorityRaw { return $0.priorityRaw > $1.priorityRaw }
-                return $0.createdAt > $1.createdAt
+                return manualThenCreated($0, $1)
             }
         }
+    }
+
+    /// Tiebreaker once the active sort field is equal: manual `sortIndex` first,
+    /// then newest-created so un-reordered tasks keep their previous order.
+    private func manualThenCreated(_ a: DBModel.Task, _ b: DBModel.Task) -> Bool {
+        if a.sortIndex != b.sortIndex { return a.sortIndex < b.sortIndex }
+        return a.createdAt > b.createdAt
     }
 
     var body: some View {
@@ -115,6 +125,7 @@ private struct TaskListContent: View {
                 if !openTasks.isEmpty {
                     Section("Open") {
                         ForEach(openTasks, id: \.id) { row(for: $0) }
+                            .onMove(perform: moveOpenTasks)
                     }
                 }
                 if !doneTasks.isEmpty {
@@ -124,6 +135,15 @@ private struct TaskListContent: View {
                 }
             }
         }
+    }
+
+    /// Drag-to-reorder within the Open section. Persists the new order as each
+    /// task's sortIndex; since that's only a tiebreaker after the active sort
+    /// field, dragging sticks within equal-sort groups and snaps back across them.
+    private func moveOpenTasks(from source: IndexSet, to destination: Int) {
+        var reordered = openTasks
+        reordered.move(fromOffsets: source, toOffset: destination)
+        injected.interactors.tasks.setManualOrder(reordered, in: modelContext)
     }
 
     @ViewBuilder

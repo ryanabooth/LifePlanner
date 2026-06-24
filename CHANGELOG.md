@@ -9,6 +9,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - Common field plot detail now has a "create new" button on its Habits and Tasks section headers, mirroring goal plots (new items are unlinked, so they feed the common field)
+- Manual task ordering — tap Edit on the Tasks list to drag tasks into a custom order. The order applies as a tiebreaker *after* the active sort field (due date / priority), so dragging rearranges tasks that share the same due date or priority. Schema bumped to v0.17.0
 
 ### Changed
 - The habit history calendar is now shown directly in the habit editor instead of behind a "View history" tap
