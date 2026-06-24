@@ -24,9 +24,25 @@ Always run the full `build test` after touching models, interactors, or anything
 
 ## Branching workflow
 
-Every change — feature, fix, doc tweak — gets its own branch (`feature/<name>`, `fix/<name>`, `docs/<name>`, `infra/<name>`), pushed, and lands via a PR with **Summary + Test plan** sections. Use `gh pr create` + `gh pr merge --merge`.
+Every change — feature, fix, doc tweak — gets its own branch (`feature/<name>`, `fix/<name>`, `docs/<name>`, `infra/<name>`), pushed, and lands via a PR with **Summary + Test plan** sections. Use `gh pr create` + `gh pr merge --merge`. **Branch *before* the first commit** — it's easy to start editing on `main` out of habit; `git checkout -b …` first, every time.
 
 **Exception: version/build bumps** produced by `scripts/testflight.sh` may be committed directly to `main` — no PR needed.
+
+### Commit guard (enforced)
+
+A tracked pre-commit hook in `.githooks/` **blocks commits to `main`/`master`** so accidental direct commits can't happen. After a fresh clone, activate it once:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+For the sanctioned version/build-bump exception, opt out explicitly per commit:
+
+```bash
+ALLOW_MAIN_COMMIT=1 git commit -m "chore: bump build to N"
+```
+
+If you ever do land a commit on `main` by mistake before pushing, recover the same way: `git branch <feature>` to keep the work, then `git reset --hard origin/main`, and continue on the branch.
 
 ## Architecture
 

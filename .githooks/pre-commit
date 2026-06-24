@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#
+# Block accidental commits straight to main/master. Every change belongs on a
+# feature branch and lands via a PR (see CLAUDE.md → Branching workflow).
+#
+# The one sanctioned exception is a version/build bump from scripts/testflight.sh.
+# For those, opt out explicitly:
+#
+#     ALLOW_MAIN_COMMIT=1 git commit -m "chore: bump build to N"
+#
+branch="$(git symbolic-ref --short HEAD 2>/dev/null)"
+
+if [[ "$branch" == "main" || "$branch" == "master" ]]; then
+  if [[ "${ALLOW_MAIN_COMMIT:-}" == "1" ]]; then
+    exit 0
+  fi
+  cat >&2 <<'MSG'
+✋ Refusing to commit directly to the default branch.
+
+Create a feature branch and open a PR instead:
+    git checkout -b feature/<name>
+
+Version/build bumps are the only exception (see CLAUDE.md):
+    ALLOW_MAIN_COMMIT=1 git commit ...
+MSG
+  exit 1
+fi
+
+exit 0
