@@ -109,6 +109,32 @@ final class LifePlannerTests: XCTestCase {
     }
 
     @MainActor
+    func test_tasksInteractor_setManualOrderAssignsSequentialSortIndex() throws {
+        let container = try ModelContainer(
+            for: DBModel.Task.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let interactor = RealTasksInteractor()
+
+        interactor.add(TaskDraft(title: "A"), in: context)
+        interactor.add(TaskDraft(title: "B"), in: context)
+        interactor.add(TaskDraft(title: "C"), in: context)
+        try context.save()
+
+        let all = try context.fetch(FetchDescriptor<DBModel.Task>())
+        let a = try XCTUnwrap(all.first { $0.title == "A" })
+        let b = try XCTUnwrap(all.first { $0.title == "B" })
+        let c = try XCTUnwrap(all.first { $0.title == "C" })
+
+        // Reorder to C, A, B.
+        interactor.setManualOrder([c, a, b], in: context)
+        XCTAssertEqual(c.sortIndex, 0)
+        XCTAssertEqual(a.sortIndex, 1)
+        XCTAssertEqual(b.sortIndex, 2)
+    }
+
+    @MainActor
     func test_tasksInteractor_rejectsBlankTitle() throws {
         let container = try ModelContainer(
             for: DBModel.Task.self,

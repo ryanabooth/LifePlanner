@@ -96,6 +96,10 @@ extension DBModel {
         var isDone: Bool = false
         var completedAt: Date? = nil
         var recurrenceRaw: Int? = nil
+        /// Manual ordering position, applied as a tiebreaker *after* the active
+        /// sort field (due date / priority). Lower sorts first. Defaults to 0 so
+        /// existing tasks fall back to createdAt until the user drags to reorder.
+        var sortIndex: Int = 0
         var createdAt: Date = Date()
         var updatedAt: Date = Date()
 
@@ -110,6 +114,7 @@ extension DBModel {
             isDone: Bool = false,
             completedAt: Date? = nil,
             recurrence: TaskRecurrence? = nil,
+            sortIndex: Int = 0,
             createdAt: Date = Date(),
             updatedAt: Date = Date()
         ) {
@@ -121,6 +126,7 @@ extension DBModel {
             self.isDone = isDone
             self.completedAt = completedAt
             self.recurrenceRaw = recurrence?.rawValue
+            self.sortIndex = sortIndex
             self.createdAt = createdAt
             self.updatedAt = updatedAt
         }

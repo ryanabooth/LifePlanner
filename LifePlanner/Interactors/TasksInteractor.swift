@@ -16,6 +16,9 @@ protocol TasksInteractor {
     func update(_ task: DBModel.Task, with draft: TaskDraft, in context: ModelContext)
     func toggleDone(_ task: DBModel.Task, in context: ModelContext)
     func delete(_ task: DBModel.Task, in context: ModelContext)
+    /// Persist a manual ordering: assigns each task a `sortIndex` matching its
+    /// position in `orderedTasks`. Used as a tiebreaker after the active sort.
+    func setManualOrder(_ orderedTasks: [DBModel.Task], in context: ModelContext)
 }
 
 final class RealTasksInteractor: TasksInteractor {
@@ -105,6 +108,14 @@ final class RealTasksInteractor: TasksInteractor {
         context.saveQuietly()
     }
 
+    func setManualOrder(_ orderedTasks: [DBModel.Task], in context: ModelContext) {
+        for (index, task) in orderedTasks.enumerated() where task.sortIndex != index {
+            task.sortIndex = index
+            task.updatedAt = Date()
+        }
+        context.saveQuietly()
+    }
+
     /// Sets `task.goals` to the single goal matching `goalID`, or clears it when
     /// `goalID` is nil. The many-to-many inverse on `Goal.linkedTasks` is updated
     /// automatically by SwiftData.
@@ -159,6 +170,7 @@ final class StubTasksInteractor: TasksInteractor {
     func update(_ task: DBModel.Task, with draft: TaskDraft, in context: ModelContext) {}
     func toggleDone(_ task: DBModel.Task, in context: ModelContext) {}
     func delete(_ task: DBModel.Task, in context: ModelContext) {}
+    func setManualOrder(_ orderedTasks: [DBModel.Task], in context: ModelContext) {}
 }
 
 private extension String {
