@@ -788,6 +788,35 @@ final class LifePlannerTests: XCTestCase {
     }
 
     @MainActor
+    func test_habit_refreshStreaksResetsAfterMissedDay() throws {
+        let container = try ModelContainer(
+            for: DBModel.Habit.self, DBModel.HabitLogEntry.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let interactor = RealHabitsInteractor(scheduler: StubNotificationScheduler())
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+
+        interactor.add(HabitDraft(title: "Meditate"), in: context)
+        try context.save()
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+
+        // Build a 3-day streak ending three days ago (so the last two days are
+        // missed). The stored streak stays at 3 until something recomputes it.
+        for back in stride(from: 5, through: 3, by: -1) {
+            interactor.toggleDone(habit, on: cal.date(byAdding: .day, value: -back, to: today)!, in: context)
+        }
+        try context.save()
+        XCTAssertEqual(habit.currentStreak, 3, "streak stored from the last logged run")
+
+        // Refreshing as of today sees the missed days and resets the streak.
+        interactor.refreshStreaks(asOf: today, in: context)
+        XCTAssertEqual(habit.currentStreak, 0, "missed days reset the current streak")
+        XCTAssertEqual(habit.longestStreak, 3, "longest streak is preserved")
+    }
+
+    @MainActor
     func test_habit_mostRecentMissedDay_weekdaysSkipWeekend() throws {
         let container = try ModelContainer(
             for: DBModel.Habit.self, DBModel.HabitLogEntry.self,

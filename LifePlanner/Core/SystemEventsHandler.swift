@@ -71,6 +71,7 @@ struct RealSystemEventsHandler: SystemEventsHandler {
         // If yesterday's batch was rolled before any tasks/habits existed,
         // upgrade commonField placeholders to real candidates now.
         container.interactors.quests.refreshTodaysCommonFieldSlots(in: context)
+        container.interactors.habits.refreshStreaks(asOf: now, in: context)
         if context.hasChanges {
             try? context.save()
         }

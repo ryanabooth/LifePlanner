@@ -12,6 +12,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Closing the task editor now always returns to the Tasks tab. A task-due notification could open the editor over the farm view, leaving you stranded there after saving
 - Tapping a habit reminder now opens the Habits list (scrolled to that habit) so it can be marked done, instead of opening the edit form where logging isn't possible
 - Paused goals no longer decay — a plot bound to a paused goal is exempt from the daily health loss until the goal is resumed
+- Habit streak indicators now reset after a missed day. Streaks are recomputed on launch, so a habit that lapsed no longer shows a stale 🔥 count until the next time you log it
 
 ## [Build 19] — pending TestFlight
 
