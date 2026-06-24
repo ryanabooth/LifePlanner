@@ -471,6 +471,32 @@ final class LifePlannerTests: XCTestCase {
         XCTAssertEqual(plot.state, .dead, "withered too long becomes dead")
     }
 
+    @MainActor
+    func test_farm_pausedGoalPlotDoesNotDecay() throws {
+        let context = try makeFarmContext()
+        let calendar = Calendar.current
+        let farm = RealFarmInteractor(calendar: calendar)
+        let goals = RealGoalsInteractor(farm: farm)
+        farm.bootstrap(in: context)
+        goals.add(GoalDraft(title: "On hold", farmElementType: .crop), in: context)
+        try context.save()
+        let goal = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Goal>()).first)
+        let plot = try XCTUnwrap(goal.plot)
+
+        // Pause the goal, then run a multi-day decay tick.
+        goals.setStatus(goal, status: .paused, in: context)
+        var fetchState = FetchDescriptor<DBModel.FarmState>()
+        fetchState.fetchLimit = 1
+        let state = try XCTUnwrap(try context.fetch(fetchState).first)
+        let now = Date()
+        state.lastDecayTick = calendar.date(byAdding: .day, value: -5, to: now)
+        let healthBefore = plot.health
+        try context.save()
+
+        farm.applyDailyDecay(now: now, in: context)
+        XCTAssertEqual(plot.health, healthBefore, "paused goal's plot does not decay")
+    }
+
     // MARK: - Quests
 
     @MainActor
