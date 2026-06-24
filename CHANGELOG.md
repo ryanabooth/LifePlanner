@@ -9,6 +9,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - Back-filling a habit for a past day (the once-a-day catch-up prompt) no longer triggers today's farm contributions or quest completion — it only records the entry and updates the streak
+- Closing the task editor now always returns to the Tasks tab. A task-due notification could open the editor over the farm view, leaving you stranded there after saving
 
 ## [Build 19] — pending TestFlight
 
