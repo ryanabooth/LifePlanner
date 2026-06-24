@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- Back-filling a habit for a past day (the once-a-day catch-up prompt) no longer triggers today's farm contributions or quest completion — it only records the entry and updates the streak
+
 ## [Build 19] — pending TestFlight
 
 ### Added

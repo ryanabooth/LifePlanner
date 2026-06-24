@@ -127,11 +127,17 @@ final class RealHabitsInteractor: HabitsInteractor {
                 habit: habit
             )
             context.insert(entry)
-            let matured = farm.applyHabitCompletion(habit, in: context)
-            quests.notifyCompletion(referenceID: habit.id, in: context)
-            if habit.goals?.isEmpty != false { quests.notifyCommonFieldTend(in: context) }
-            quests.checkFarmQuests(in: context)
-            quests.trackMatureTransitions(count: matured, in: context)
+            // Farm contributions and quest completion are "today" concepts.
+            // Back-filling a *past* day (e.g. the once-a-day catch-up prompt)
+            // records the entry and streak but must not satisfy today's quests
+            // or pump health into plots.
+            if calendar.isDateInToday(day) {
+                let matured = farm.applyHabitCompletion(habit, in: context)
+                quests.notifyCompletion(referenceID: habit.id, in: context)
+                if habit.goals?.isEmpty != false { quests.notifyCommonFieldTend(in: context) }
+                quests.checkFarmQuests(in: context)
+                quests.trackMatureTransitions(count: matured, in: context)
+            }
         }
         habit.updatedAt = Date()
         recomputeStreak(for: habit, on: day)

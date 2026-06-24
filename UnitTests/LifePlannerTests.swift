@@ -389,6 +389,34 @@ final class LifePlannerTests: XCTestCase {
     }
 
     @MainActor
+    func test_farm_backfillingPastDayDoesNotContributeToPlot() throws {
+        let context = try makeFarmContext()
+        let farm = RealFarmInteractor()
+        let goals = RealGoalsInteractor(farm: farm)
+        let habits = RealHabitsInteractor(scheduler: StubNotificationScheduler(), farm: farm)
+        farm.bootstrap(in: context)
+
+        goals.add(GoalDraft(title: "Read", farmElementType: .crop), in: context)
+        habits.add(HabitDraft(title: "Read 10 pages"), in: context)
+        try context.save()
+
+        let goal = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Goal>()).first)
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+        goals.setLinks(goal, tasks: [], habits: [habit], in: context)
+        try context.save()
+
+        let initialHealth = try XCTUnwrap(goal.plot?.health)
+        // Back-fill yesterday — the entry is recorded but no health is pumped.
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        habits.toggleDone(habit, on: yesterday, in: context)
+        try context.save()
+
+        XCTAssertTrue(habit.isDone(on: yesterday), "back-filled entry is recorded")
+        XCTAssertEqual(try XCTUnwrap(goal.plot?.health), initialHealth,
+                       "back-filling a past day does not contribute health")
+    }
+
+    @MainActor
     func test_farm_unlinkedHabitFeedsCommonField() throws {
         let context = try makeFarmContext()
         let farm = RealFarmInteractor()
