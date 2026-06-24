@@ -101,12 +101,9 @@ struct AddHabitSheet: View {
                     }
                 }
                 if let existingHabit {
-                    Section {
-                        NavigationLink {
-                            HabitCalendarView(habit: existingHabit)
-                        } label: {
-                            Label("View history", systemImage: "calendar")
-                        }
+                    Section("History") {
+                        HabitCalendarView(habit: existingHabit)
+                            .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                     }
                 }
             }
