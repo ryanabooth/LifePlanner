@@ -23,9 +23,7 @@ struct HabitCalendarView: View {
             grid
             legend
         }
-        .padding()
-        .navigationTitle("History")
-        .navigationBarTitleDisplayMode(.inline)
+        .padding(.vertical, 4)
     }
 
     // MARK: - Header
