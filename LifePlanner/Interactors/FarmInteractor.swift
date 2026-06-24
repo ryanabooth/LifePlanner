@@ -321,6 +321,8 @@ final class RealFarmInteractor: FarmInteractor {
         let decayMultiplier = activeWeatherKind(in: context).decayMultiplier
         let allPlots = (try? context.fetch(FetchDescriptor<DBModel.FarmPlot>())) ?? []
         for plot in allPlots where plot.kind != .commonField {
+            // Paused goals are intentionally on hold — their plots don't decay.
+            if plot.goal?.status == .paused { continue }
             decay(plot: plot, days: daysElapsed, multiplier: decayMultiplier)
         }
         // Common field decays at half rate so it slowly drifts but rarely dies.

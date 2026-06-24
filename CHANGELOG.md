@@ -11,6 +11,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Back-filling a habit for a past day (the once-a-day catch-up prompt) no longer triggers today's farm contributions or quest completion — it only records the entry and updates the streak
 - Closing the task editor now always returns to the Tasks tab. A task-due notification could open the editor over the farm view, leaving you stranded there after saving
 - Tapping a habit reminder now opens the Habits list (scrolled to that habit) so it can be marked done, instead of opening the edit form where logging isn't possible
+- Paused goals no longer decay — a plot bound to a paused goal is exempt from the daily health loss until the goal is resumed
 
 ## [Build 19] — pending TestFlight
 
