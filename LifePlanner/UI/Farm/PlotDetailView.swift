@@ -30,6 +30,8 @@ struct PlotDetailView: View {
     @State private var showingHabitPicker = false
     @State private var showingNewTask = false
     @State private var showingNewHabit = false
+    @State private var showingNewCommonTask = false
+    @State private var showingNewCommonHabit = false
 
     private var activeWeather: DBModel.WeatherEvent? {
         let now = Date()
@@ -125,6 +127,37 @@ struct PlotDetailView: View {
                     injected.interactors.habits.add(draft, in: modelContext)
                 }
             }
+        }
+        .sheet(isPresented: $showingNewCommonTask) {
+            // No goal link — an unlinked task feeds the common field.
+            AddTaskSheet { draft in
+                injected.interactors.tasks.add(draft, in: modelContext)
+            }
+        }
+        .sheet(isPresented: $showingNewCommonHabit) {
+            AddHabitSheet { draft in
+                injected.interactors.habits.add(draft, in: modelContext)
+            }
+        }
+    }
+
+    /// A section header with a single trailing "create" action, for the common
+    /// field (new items are unlinked, so there's nothing to link to).
+    private func createOnlyHeader(
+        _ title: String,
+        createLabel: String,
+        onCreate: @escaping () -> Void
+    ) -> some View {
+        HStack {
+            Text(title).font(.footnote)
+            Spacer()
+            Button(action: onCreate) {
+                Image(systemName: "plus.circle.fill")
+                    .foregroundStyle(.tint)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(createLabel)
         }
     }
 
@@ -315,8 +348,11 @@ struct PlotDetailView: View {
                 }
             }
         } header: {
-            Text("Habits")
-                .font(.footnote)
+            createOnlyHeader(
+                "Habits",
+                createLabel: "New habit for the common field",
+                onCreate: { showingNewCommonHabit = true }
+            )
         } footer: {
             Text("Unlinked habits feed the common field.")
                 .font(.footnote)
@@ -352,8 +388,11 @@ struct PlotDetailView: View {
                 }
             }
         } header: {
-            Text("Tasks")
-                .font(.footnote)
+            createOnlyHeader(
+                "Tasks",
+                createLabel: "New task for the common field",
+                onCreate: { showingNewCommonTask = true }
+            )
         } footer: {
             Text("Unlinked tasks feed the common field.")
                 .font(.footnote)
