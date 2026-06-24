@@ -123,7 +123,7 @@ All tests live in `UnitTests/LifePlannerTests.swift` (one file by design — kee
 
 ## TestFlight
 
-`scripts/testflight.sh` does bump → archive → export → upload. Credentials live in `scripts/.env` (gitignored). Two auth modes supported: App Store Connect API key (preferred) or Apple ID + app-specific password. Latest uploaded build is in the project's `CURRENT_PROJECT_VERSION`.
+`scripts/testflight.sh` does bump → archive → export → upload → commit-bump. The bump is committed to the current branch only after a successful upload (so a failed run leaves nothing committed; re-run with `--no-bump` to retry the same build number), using the `ALLOW_MAIN_COMMIT=1` escape hatch so the commit guard allows it. The script does not push — push the bump commit yourself. Credentials live in `scripts/.env` (gitignored). Two auth modes supported: App Store Connect API key (preferred) or Apple ID + app-specific password. Latest uploaded build is in the project's `CURRENT_PROJECT_VERSION`.
 
 ## Accessibility patterns
 
