@@ -145,3 +145,18 @@ fi
 
 echo "==> Done. Build is processing in App Store Connect — typically 5–30 minutes."
 echo "    https://appstoreconnect.apple.com -> TestFlight -> iOS Builds"
+
+# --- step 5: commit the bump --------------------------------------------------
+# Only after a successful upload, so a failed run leaves nothing committed
+# (re-run with --no-bump to retry the same build number). Version/build bumps
+# are the sanctioned exception to the no-direct-commits-to-main rule, so we use
+# the ALLOW_MAIN_COMMIT escape hatch the pre-commit guard understands.
+if [[ "$DO_BUMP" -eq 1 ]]; then
+  if ! git diff --quiet -- "${PROJECT}/project.pbxproj" QuestsWidget/Info.plist; then
+    echo "==> Committing build bump (${CURRENT_BUILD})"
+    git add "${PROJECT}/project.pbxproj" QuestsWidget/Info.plist
+    ALLOW_MAIN_COMMIT=1 git commit -m "chore: bump build to ${CURRENT_BUILD}" \
+      -m "Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>"
+    echo "==> Push when ready: git push origin \$(git rev-parse --abbrev-ref HEAD)"
+  fi
+fi
