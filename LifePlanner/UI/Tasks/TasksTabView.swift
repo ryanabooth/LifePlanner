@@ -40,6 +40,15 @@ struct TasksTabView: View {
                     editing = task
                     injected.appState[\.routing.pendingDeepLink] = nil
                 }
+                // Closing the editor always lands on the Tasks tab. A task-due
+                // deep link can present this sheet over whatever tab was front
+                // (e.g. the farm); without this, dismissing the form would leave
+                // the user stranded there instead of back at their task list.
+                .onChange(of: editing) { _, newValue in
+                    if newValue == nil {
+                        injected.appState[\.routing.selectedTab] = .tasks
+                    }
+                }
         }
     }
 
