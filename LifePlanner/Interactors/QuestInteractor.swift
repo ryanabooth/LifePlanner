@@ -288,6 +288,7 @@ final class RealQuestInteractor: QuestInteractor {
         ))) ?? []
         for task in openTasks where !usedRefs.contains(task.id) {
             guard let due = task.dueDate, due < endOfToday else { continue }
+            guard questEligible(goals: task.goals) else { continue }
             pool.append(.task(task))
         }
 
@@ -302,6 +303,7 @@ final class RealQuestInteractor: QuestInteractor {
         for habit in activeHabits where !usedRefs.contains(habit.id) {
             if habit.isWeekComplete(containing: today, calendar: calendar) { continue }
             if habit.isDone(on: today, calendar: calendar) { continue }
+            guard questEligible(goals: habit.goals) else { continue }
             pool.append(.habit(habit))
         }
 
@@ -316,6 +318,15 @@ final class RealQuestInteractor: QuestInteractor {
         }
 
         return pool
+    }
+
+    /// A task/habit is quest-eligible if it's unlinked (feeds the common field)
+    /// or linked to at least one active goal. Items tied only to paused/done/
+    /// abandoned goals are excluded — no point questing toward a goal on hold.
+    private func questEligible(goals: [DBModel.Goal]?) -> Bool {
+        let goals = goals ?? []
+        if goals.isEmpty { return true }
+        return goals.contains { $0.status == .active }
     }
 
     private func shuffled(_ pool: [Candidate], count: Int) -> [Candidate] {

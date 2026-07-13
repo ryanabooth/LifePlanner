@@ -602,6 +602,31 @@ final class LifePlannerTests: XCTestCase {
     }
 
     @MainActor
+    func test_quests_excludeItemsLinkedToNonActiveGoals() throws {
+        let context = try makeFarmContext()
+        let farm = RealFarmInteractor()
+        farm.bootstrap(in: context)
+        let scheduler = StubNotificationScheduler()
+        let goals = RealGoalsInteractor(farm: farm)
+        let tasks = RealTasksInteractor(scheduler: scheduler, farm: farm)
+        let quests = RealQuestInteractor(rng: { 0 })
+
+        goals.add(GoalDraft(title: "Paused goal"), in: context)
+        tasks.add(TaskDraft(title: "Task on paused goal", dueDate: Date(), priority: .high), in: context)
+        try context.save()
+
+        let goal = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Goal>()).first)
+        let task = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Task>()).first)
+        goals.setLinks(goal, tasks: [task], habits: [], in: context)
+        goals.setStatus(goal, status: .paused, in: context)
+        try context.save()
+
+        let rolled = quests.rollDaily(on: Date(), in: context)
+        XCTAssertFalse(rolled.contains { $0.referenceID == task.id },
+                       "a task linked to a paused goal is not offered as a quest")
+    }
+
+    @MainActor
     func test_quests_rerollCostsGoldAndBumpsCount() throws {
         let context = try makeFarmContext()
         let economy = RealEconomyInteractor()
