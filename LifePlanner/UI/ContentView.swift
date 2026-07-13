@@ -55,10 +55,21 @@ struct ContentView: View {
             .onReceive(injected.appState.updates(for: \.routing.selectedTab)) { tab in
                 if selectedTab != tab { selectedTab = tab }
             }
+            // Keep routing.selectedTab in sync with the visible tab. Without this
+            // it stays stale (default .farm) when the user switches tabs by hand;
+            // then any re-render re-subscribes the publisher above, which re-emits
+            // that stale value and yanks the user back to the farm — e.g. after
+            // marking a task done or reordering. Syncing makes the re-emit a no-op.
+            .onChange(of: selectedTab) { _, tab in
+                injected.appState[\.routing.selectedTab] = tab
+            }
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active { maybeShowBackfillPrompt() }
             }
-            .onAppear { maybeShowBackfillPrompt() }
+            .onAppear {
+                injected.appState[\.routing.selectedTab] = selectedTab
+                maybeShowBackfillPrompt()
+            }
     }
 
     /// Show the back-fill prompt at most once per calendar day, and only when

@@ -9,6 +9,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - The habit history calendar's month navigation now works. Embedded in the editor's List, the prev/next chevrons were swallowed by the row; making them borderless buttons restores paging
+- Marking a task done or reordering on the Tasks tab no longer jumps to the farm. The tab-routing value is now kept in sync with the visible tab, so a re-render's re-subscribe doesn't re-emit a stale "farm" and yank you away
 
 ### Added
 - Common field plot detail now has a "create new" button on its Habits and Tasks section headers, mirroring goal plots (new items are unlinked, so they feed the common field)
