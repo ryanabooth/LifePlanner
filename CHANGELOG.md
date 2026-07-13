@@ -8,6 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Changed
+- Daily quests are no longer drawn from tasks/habits linked to a non-active (paused/done/abandoned) goal. Unlinked items and those on active goals still qualify
 - Marking a goal Done now releases its still-open tasks and its habits back to "no goal" (they fall through to the common field). Completed tasks stay linked for the record
 
 ### Fixed
