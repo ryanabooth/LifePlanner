@@ -253,10 +253,19 @@ struct FarmTabView: View {
     /// identity, health, state, kind, or the gold balance. SwiftUI's onChange
     /// only fires when the integer differs, so this is cheaper than diffing
     /// every plot row by hand.
+    /// Plots actually rendered on the farm. Paused goals are taken off the farm
+    /// (managed from the Goals tab) until they're resumed.
+    private var visiblePlots: [DBModel.FarmPlot] {
+        plots.filter { $0.goal?.status != .paused }
+    }
+
     private var snapshotSignature: Int {
         var hasher = Hasher()
-        hasher.combine(plots.count)
-        for plot in plots {
+        // Hash over the *visible* set so pausing/resuming a goal (which adds or
+        // removes its plot here) re-pushes the scene.
+        let visible = visiblePlots
+        hasher.combine(visible.count)
+        for plot in visible {
             hasher.combine(plot.id)
             hasher.combine(plot.health)
             hasher.combine(plot.state.rawValue)
@@ -270,7 +279,7 @@ struct FarmTabView: View {
 
     private func pushSnapshot() {
         scene.snapshot(
-            plots: plots,
+            plots: visiblePlots,
             gold: farmStates.first?.gold ?? 0,
             capacity: farmStates.first?.plotCapacity ?? 0
         )
