@@ -8,7 +8,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
-- Paused-goal plots are now marked with a ⏸ glyph on the farm label and a "Paused" row in the plot detail, so on-hold plots (which don't decay) are visible at a glance
+- Paused goals are now taken off the farm — their plot is hidden from the farm scene until the goal is resumed (managed from the Goals tab's Paused section). Supersedes the on-farm ⏸ label; the plot detail's "Paused" row remains
 - The goal detail's linked-tasks list supports drag-to-reorder (tap Edit), sharing the same manual `sortIndex` as the main Tasks list
 
 ### Changed
