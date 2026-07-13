@@ -213,6 +213,13 @@ struct PlotDetailView: View {
 
     private func statsSection(plot: DBModel.FarmPlot) -> some View {
         Section {
+            if plot.goal?.status == .paused {
+                LabeledContent("Goal") {
+                    Label("Paused", systemImage: "pause.circle.fill")
+                        .foregroundStyle(.orange)
+                }
+                .accessibilityLabel("Goal paused")
+            }
             LabeledContent("Kind", value: plot.kind.label)
             LabeledContent("State", value: stateLabel(plot.state))
             LabeledContent("Health", value: "\(plot.health) / 100")
