@@ -33,6 +33,22 @@ struct GoalDetailView: View {
         return allTasks.filter { !$0.isDone || linkedIDs.contains($0.id) }
     }
 
+    /// Linked tasks ordered incomplete-first, then by the shared manual
+    /// `sortIndex` (drag-to-reorder), then newest-created.
+    private var sortedLinkedTasks: [DBModel.Task] {
+        (goal.linkedTasks ?? []).sorted {
+            if $0.isDone != $1.isDone { return !$0.isDone }
+            if $0.sortIndex != $1.sortIndex { return $0.sortIndex < $1.sortIndex }
+            return $0.createdAt > $1.createdAt
+        }
+    }
+
+    private func moveTasks(from source: IndexSet, to destination: Int) {
+        var reordered = sortedLinkedTasks
+        reordered.move(fromOffsets: source, toOffset: destination)
+        injected.interactors.tasks.setManualOrder(reordered, in: modelContext)
+    }
+
     var body: some View {
         Form {
             Section {
@@ -81,7 +97,7 @@ struct GoalDetailView: View {
             }
 
             Section {
-                let linked = (goal.linkedTasks ?? []).sorted { !$0.isDone && $1.isDone }
+                let linked = sortedLinkedTasks
                 if linked.isEmpty {
                     Text("No tasks linked.")
                         .foregroundStyle(.secondary)
@@ -93,6 +109,7 @@ struct GoalDetailView: View {
                             Text(task.title).strikethrough(task.isDone)
                         }
                     }
+                    .onMove(perform: moveTasks)
                 }
             } header: {
                 sectionHeader(
@@ -114,6 +131,9 @@ struct GoalDetailView: View {
         .navigationTitle(goal.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                EditButton()
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button("Edit") { showingEdit = true }
             }
