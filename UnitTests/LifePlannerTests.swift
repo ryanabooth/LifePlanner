@@ -216,6 +216,41 @@ final class LifePlannerTests: XCTestCase {
     }
 
     @MainActor
+    func test_goalsInteractor_finishingUnlinksOpenTasksAndHabits() throws {
+        let container = try ModelContainer(
+            for: DBModel.Goal.self, DBModel.Task.self, DBModel.Habit.self, DBModel.HabitLogEntry.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let context = ModelContext(container)
+        let goals = RealGoalsInteractor()
+        let tasks = RealTasksInteractor()
+        let habits = RealHabitsInteractor()
+
+        goals.add(GoalDraft(title: "Ship v1"), in: context)
+        tasks.add(TaskDraft(title: "Open task"), in: context)
+        tasks.add(TaskDraft(title: "Done task"), in: context)
+        habits.add(HabitDraft(title: "Daily standup"), in: context)
+        try context.save()
+
+        let goal = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Goal>()).first)
+        let allTasks = try context.fetch(FetchDescriptor<DBModel.Task>())
+        let openTask = try XCTUnwrap(allTasks.first { $0.title == "Open task" })
+        let doneTask = try XCTUnwrap(allTasks.first { $0.title == "Done task" })
+        let habit = try XCTUnwrap(try context.fetch(FetchDescriptor<DBModel.Habit>()).first)
+
+        goals.setLinks(goal, tasks: allTasks, habits: [habit], in: context)
+        tasks.toggleDone(doneTask, in: context)   // one task completed
+        try context.save()
+
+        goals.setStatus(goal, status: .done, in: context)
+        try context.save()
+
+        XCTAssertTrue((openTask.goals ?? []).isEmpty, "open task released to no goal")
+        XCTAssertTrue((habit.goals ?? []).isEmpty, "habit released to no goal")
+        XCTAssertFalse((doneTask.goals ?? []).isEmpty, "completed task stays linked for the record")
+    }
+
+    @MainActor
     func test_habitsInteractor_schedulesAndCancelsReminders() async throws {
         let container = try ModelContainer(
             for: DBModel.Habit.self, DBModel.HabitLogEntry.self,
