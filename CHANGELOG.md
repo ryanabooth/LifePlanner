@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- The habit history calendar's month navigation now works. Embedded in the editor's List, the prev/next chevrons were swallowed by the row; making them borderless buttons restores paging
+
 ### Added
 - Common field plot detail now has a "create new" button on its Habits and Tasks section headers, mirroring goal plots (new items are unlinked, so they feed the common field)
 - Manual task ordering — tap Edit on the Tasks list to drag tasks into a custom order. The order applies as a tiebreaker *after* the active sort field (due date / priority), so dragging rearranges tasks that share the same due date or priority. Schema bumped to v0.17.0

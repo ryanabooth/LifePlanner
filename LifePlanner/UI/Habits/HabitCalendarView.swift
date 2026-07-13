@@ -34,7 +34,12 @@ struct HabitCalendarView: View {
                 shiftMonth(by: -1)
             } label: {
                 Image(systemName: "chevron.left")
+                    .contentShape(Rectangle())
             }
+            // Borderless so the two chevrons are independent tap targets inside
+            // the List/Form row — without it the row swallows the taps and
+            // neither month button fires.
+            .buttonStyle(.borderless)
             .accessibilityLabel("Previous month")
 
             Spacer()
@@ -46,7 +51,9 @@ struct HabitCalendarView: View {
                 shiftMonth(by: 1)
             } label: {
                 Image(systemName: "chevron.right")
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.borderless)
             .disabled(isCurrentMonth)
             .accessibilityLabel("Next month")
         }
