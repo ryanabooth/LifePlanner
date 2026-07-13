@@ -7,6 +7,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- Marking a goal Done now releases its still-open tasks and its habits back to "no goal" (they fall through to the common field). Completed tasks stay linked for the record
+
 ### Fixed
 - The habit history calendar's month navigation now works. Embedded in the editor's List, the prev/next chevrons were swallowed by the row; making them borderless buttons restores paging
 - Marking a task done or reordering on the Tasks tab no longer jumps to the farm. The tab-routing value is now kept in sync with the visible tab, so a re-render's re-subscribe doesn't re-emit a stale "farm" and yank you away

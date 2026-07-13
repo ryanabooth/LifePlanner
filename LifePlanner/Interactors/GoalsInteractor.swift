@@ -73,6 +73,15 @@ final class RealGoalsInteractor: GoalsInteractor {
     func setStatus(_ goal: DBModel.Goal, status: GoalStatus, in context: ModelContext) {
         goal.status = status
         goal.updatedAt = Date()
+        if status == .done {
+            // Finishing a goal releases its still-open tasks and all its habits
+            // back to "no goal" so they fall through to the common field instead
+            // of pumping a completed goal. Completed tasks stay linked for the record.
+            let openTasks = (goal.linkedTasks ?? []).filter { !$0.isDone }
+            let habits = goal.linkedHabits ?? []
+            for task in openTasks { task.goals = [] }
+            for habit in habits { habit.goals = [] }
+        }
         context.saveQuietly()
     }
 
