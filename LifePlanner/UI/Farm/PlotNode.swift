@@ -145,7 +145,10 @@ final class PlotNode: SKNode {
         let barWidth   = currentTileSize * 0.9
         healthBar.size = CGSize(width: max(1, barWidth * fraction), height: 6)
         healthBar.color = barColor(for: clamped, state: plot.state)
-        label.text = plot.goal?.title ?? "Common Field"
+        let paused = plot.goal?.status == .paused
+        let title = plot.goal?.title ?? "Common Field"
+        // A pause glyph marks plots whose goal is on hold (they don't decay).
+        label.text = paused ? "⏸ \(title)" : title
         updateAccessibilityLabel(plot: plot)
     }
 
@@ -159,7 +162,8 @@ final class PlotNode: SKNode {
         case .withered: stateText = "withered"
         case .dead:     stateText = "dead"
         }
-        accessibilityLabel = "\(goalTitle), \(stateText), \(plot.health)% health"
+        let pausedText = plot.goal?.status == .paused ? ", paused" : ""
+        accessibilityLabel = "\(goalTitle)\(pausedText), \(stateText), \(plot.health)% health"
     }
 
     // MARK: - Animations
