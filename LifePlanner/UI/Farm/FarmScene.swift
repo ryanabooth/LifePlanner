@@ -274,7 +274,7 @@ final class FarmScene: SKScene {
     private func layoutFarmhouse() {
         guard size.width > 0, size.height > 0 else { return }
         farmhouseDecoration.position = CGPoint(
-            x: size.width * 0.20,
+            x: size.width * 0.50,
             y: size.height * 0.62
         )
     }

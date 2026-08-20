@@ -13,6 +13,13 @@ enum AssetKeys {
         "plot_\(kind.assetSlug)_\(state.assetSlug)"
     }
 
+    /// The equipped `farmhouseDecor` cosmetic slug doubles as the imageset
+    /// name (`house_red_roof`, `house_blue_roof`, `house_flower_box`); `nil`
+    /// (nothing equipped) maps to the default imageset.
+    static func farmhouse(slug: String?) -> String {
+        slug ?? "house_default"
+    }
+
     enum HUD {
         static let goldIcon = "hud_gold_icon"
     }

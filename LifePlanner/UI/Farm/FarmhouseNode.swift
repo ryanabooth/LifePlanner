@@ -1,129 +1,101 @@
 import SpriteKit
 
-/// Static farmhouse decoration placed in the upper portion of the scene.
-/// Procedural placeholder; roof color and flower boxes change with the
-/// equipped farmhouse cosmetic. Phase 2 art swaps in via `Assets.xcassets`.
+/// Farmhouse landmark placed in the upper portion of the scene. Renders
+/// artwork from `Assets.xcassets` keyed by the equipped `farmhouseDecor`
+/// cosmetic slug (see `AssetKeys.farmhouse`) — `house_default`,
+/// `house_red_roof`, `house_blue_roof`, or `house_flower_box` — falling back
+/// to a procedural placeholder if the imageset is missing, same pattern as
+/// `PlotTextureFactory`.
 final class FarmhouseNode: SKNode {
 
-    private var roofNode: SKShapeNode?
-    private var flowerBoxNode: SKNode?
+    private static let displaySize = CGSize(width: 220, height: 220)
+
+    private let sprite: SKSpriteNode
 
     override init() {
+        sprite = SKSpriteNode(texture: Self.texture(for: nil), size: Self.displaySize)
+        // Anchor the sprite's bottom edge at the node's local origin, matching
+        // where the old procedural building's base sat, so `FarmScene`'s
+        // existing `layoutFarmhouse()` positioning still reads correctly.
+        sprite.position = CGPoint(x: 0, y: Self.displaySize.height / 2)
         super.init()
-        buildBase()
+        addChild(sprite)
     }
 
     required init?(coder aDecoder: NSCoder) { fatalError() }
 
     func applyDecor(slug: String?) {
-        roofNode?.fillColor = roofColor(for: slug)
-
-        flowerBoxNode?.removeFromParent()
-        flowerBoxNode = nil
-        if slug == "house_flower_box" {
-            let fb = makeFlowerBox()
-            addChild(fb)
-            flowerBoxNode = fb
-        }
+        sprite.texture = Self.texture(for: slug)
     }
 
-    // MARK: - Build
+    // MARK: - Texture lookup
 
-    private func buildBase() {
-        // Walls
-        let walls = SKShapeNode(rect: CGRect(x: -30, y: 0, width: 60, height: 40))
-        walls.fillColor = UIColor { trait in
-            trait.userInterfaceStyle == .dark
-                ? UIColor(red: 0.30, green: 0.27, blue: 0.22, alpha: 1)
-                : UIColor(red: 0.85, green: 0.80, blue: 0.72, alpha: 1)
+    private static func texture(for slug: String?) -> SKTexture {
+        let key = AssetKeys.farmhouse(slug: slug)
+        if let image = UIImage(named: key) {
+            return SKTexture(image: image)
         }
-        walls.strokeColor = UIColor(white: 0.5, alpha: 0.4)
-        walls.lineWidth = 1
-        addChild(walls)
+        return placeholder(for: slug)
+    }
 
-        // Door
-        let door = SKShapeNode(rect: CGRect(x: -8, y: 0, width: 16, height: 24))
-        door.fillColor = UIColor { trait in
-            trait.userInterfaceStyle == .dark
-                ? UIColor(red: 0.25, green: 0.13, blue: 0.05, alpha: 1)
-                : UIColor(red: 0.45, green: 0.25, blue: 0.10, alpha: 1)
-        }
-        door.strokeColor = .clear
-        addChild(door)
+    // MARK: - Procedural placeholder
 
-        // Windows
-        for x: CGFloat in [-24, 12] {
-            let win = SKShapeNode(rect: CGRect(x: x, y: 16, width: 12, height: 12))
-            win.fillColor = UIColor { trait in
-                trait.userInterfaceStyle == .dark
-                    ? UIColor(red: 0.20, green: 0.35, blue: 0.55, alpha: 0.8)
-                    : UIColor(red: 0.60, green: 0.82, blue: 0.95, alpha: 0.8)
+    private static func placeholder(for slug: String?) -> SKTexture {
+        let size = displaySize
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let image = renderer.image { _ in
+            let wallRect = CGRect(x: size.width * 0.19, y: 0, width: size.width * 0.62, height: size.height * 0.42)
+            UIColor(white: 0.72, alpha: 1).setFill()
+            UIBezierPath(rect: wallRect).fill()
+
+            let doorRect = CGRect(x: size.width * 0.42, y: 0, width: size.width * 0.16, height: size.height * 0.25)
+            UIColor(red: 0.45, green: 0.25, blue: 0.10, alpha: 1).setFill()
+            UIBezierPath(rect: doorRect).fill()
+
+            for xFraction: CGFloat in [0.24, 0.60] {
+                let winRect = CGRect(
+                    x: size.width * xFraction, y: size.height * 0.16,
+                    width: size.width * 0.12, height: size.height * 0.12
+                )
+                UIColor(red: 0.95, green: 0.75, blue: 0.30, alpha: 0.9).setFill()
+                UIBezierPath(rect: winRect).fill()
             }
-            win.strokeColor = UIColor(white: 0.5, alpha: 0.5)
-            win.lineWidth = 1
-            addChild(win)
-        }
 
-        // Roof (default grey until a decor is equipped)
-        let roofPath = CGMutablePath()
-        roofPath.move(to: CGPoint(x: -38, y: 40))
-        roofPath.addLine(to: CGPoint(x: 0, y: 70))
-        roofPath.addLine(to: CGPoint(x: 38, y: 40))
-        roofPath.closeSubpath()
-        let roof = SKShapeNode(path: roofPath)
-        roof.fillColor = roofColor(for: nil)
-        roof.strokeColor = .clear
-        addChild(roof)
-        roofNode = roof
+            let roofPath = UIBezierPath()
+            roofPath.move(to: CGPoint(x: size.width * 0.10, y: size.height * 0.42))
+            roofPath.addLine(to: CGPoint(x: size.width * 0.50, y: size.height * 0.90))
+            roofPath.addLine(to: CGPoint(x: size.width * 0.90, y: size.height * 0.42))
+            roofPath.close()
+            roofColor(for: slug).setFill()
+            roofPath.fill()
+
+            if slug == "house_flower_box" {
+                let colors: [UIColor] = [
+                    UIColor(red: 0.95, green: 0.30, blue: 0.30, alpha: 1),
+                    UIColor(red: 1.00, green: 0.80, blue: 0.10, alpha: 1),
+                    UIColor(red: 0.85, green: 0.40, blue: 0.85, alpha: 1),
+                ]
+                for (i, color) in colors.enumerated() {
+                    let x = wallRect.minX + wallRect.width * (CGFloat(i) + 0.5) / CGFloat(colors.count)
+                    let flower = UIBezierPath(
+                        ovalIn: CGRect(x: x - size.width * 0.02, y: size.height * 0.02, width: size.width * 0.04, height: size.width * 0.04)
+                    )
+                    color.setFill()
+                    flower.fill()
+                }
+            }
+        }
+        return SKTexture(image: image)
     }
 
-    private func makeFlowerBox() -> SKNode {
-        let box = SKNode()
-
-        let plank = SKShapeNode(rect: CGRect(x: -32, y: -6, width: 64, height: 8))
-        plank.fillColor = UIColor(red: 0.45, green: 0.25, blue: 0.10, alpha: 1)
-        plank.strokeColor = .clear
-        box.addChild(plank)
-
-        let colors: [UIColor] = [
-            UIColor(red: 0.95, green: 0.30, blue: 0.30, alpha: 1),
-            UIColor(red: 1.00, green: 0.80, blue: 0.10, alpha: 1),
-            UIColor(red: 0.85, green: 0.40, blue: 0.85, alpha: 1),
-            UIColor(red: 0.95, green: 0.30, blue: 0.30, alpha: 1),
-        ]
-        let xs: [CGFloat] = [-22, -8, 8, 22]
-        for (x, color) in zip(xs, colors) {
-            let flower = SKShapeNode(circleOfRadius: 4)
-            flower.fillColor = color
-            flower.strokeColor = .clear
-            flower.position = CGPoint(x: x, y: 6)
-            box.addChild(flower)
-        }
-
-        box.position = CGPoint(x: 0, y: 40)
-        return box
-    }
-
-    private func roofColor(for slug: String?) -> UIColor {
+    private static func roofColor(for slug: String?) -> UIColor {
         switch slug {
         case "house_red_roof", "house_flower_box":
-            return UIColor { trait in
-                trait.userInterfaceStyle == .dark
-                    ? UIColor(red: 0.50, green: 0.10, blue: 0.08, alpha: 1)
-                    : UIColor(red: 0.72, green: 0.18, blue: 0.12, alpha: 1)
-            }
+            return UIColor(red: 0.72, green: 0.18, blue: 0.12, alpha: 1)
         case "house_blue_roof":
-            return UIColor { trait in
-                trait.userInterfaceStyle == .dark
-                    ? UIColor(red: 0.12, green: 0.28, blue: 0.55, alpha: 1)
-                    : UIColor(red: 0.20, green: 0.45, blue: 0.78, alpha: 1)
-            }
+            return UIColor(red: 0.20, green: 0.45, blue: 0.78, alpha: 1)
         default:
-            return UIColor { trait in
-                trait.userInterfaceStyle == .dark
-                    ? UIColor(white: 0.35, alpha: 1)
-                    : UIColor(white: 0.55, alpha: 1)
-            }
+            return UIColor(white: 0.55, alpha: 1)
         }
     }
 }
