@@ -45,6 +45,23 @@ struct PlotDetailView: View {
         return allTasks.filter { !$0.isDone || linkedIDs.contains($0.id) }
     }
 
+    /// Linked tasks ordered incomplete-first, then by the shared manual
+    /// `sortIndex` (drag-to-reorder), then newest-created. Mirrors
+    /// `GoalDetailView.sortedLinkedTasks`.
+    private func sortedLinkedTasks(for goal: DBModel.Goal) -> [DBModel.Task] {
+        (goal.linkedTasks ?? []).sorted {
+            if $0.isDone != $1.isDone { return !$0.isDone }
+            if $0.sortIndex != $1.sortIndex { return $0.sortIndex < $1.sortIndex }
+            return $0.createdAt > $1.createdAt
+        }
+    }
+
+    private func moveTasks(for goal: DBModel.Goal, from source: IndexSet, to destination: Int) {
+        var reordered = sortedLinkedTasks(for: goal)
+        reordered.move(fromOffsets: source, toOffset: destination)
+        injected.interactors.tasks.setManualOrder(reordered, in: modelContext)
+    }
+
     init(plotID: UUID) {
         self.plotID = plotID
         // Fetch only the row we care about. Predicate can compare UUID directly.
@@ -72,8 +89,16 @@ struct PlotDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if plot?.goal != nil {
+                ToolbarItem(placement: .topBarLeading) {
+                    EditButton()
+                }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Edit") { showEditGoal = true }
+                    Button {
+                        showEditGoal = true
+                    } label: {
+                        Image(systemName: "square.and.pencil")
+                    }
+                    .accessibilityLabel("Edit Goal Details")
                 }
             }
         }
@@ -250,7 +275,7 @@ struct PlotDetailView: View {
 
     private func tasksSection(goal: DBModel.Goal, locked: Bool) -> some View {
         Section {
-            let linked = (goal.linkedTasks ?? []).sorted { !$0.isDone && $1.isDone }
+            let linked = sortedLinkedTasks(for: goal)
             if linked.isEmpty {
                 Text("No tasks linked to this goal.")
                     .foregroundStyle(.secondary)
@@ -274,6 +299,9 @@ struct PlotDetailView: View {
                     .disabled(locked)
                     .accessibilityLabel(task.isDone ? "Reopen \(task.title)" : "Mark complete: \(task.title)")
                 }
+                .onMove(perform: locked ? nil : { source, destination in
+                    moveTasks(for: goal, from: source, to: destination)
+                })
             }
         } header: {
             linkSectionHeader(
