@@ -8,7 +8,7 @@ import SpriteKit
 /// `PlotTextureFactory`.
 final class FarmhouseNode: SKNode {
 
-    private static let displaySize = CGSize(width: 160, height: 160)
+    private static let displaySize = CGSize(width: 220, height: 220)
 
     private let sprite: SKSpriteNode
 
