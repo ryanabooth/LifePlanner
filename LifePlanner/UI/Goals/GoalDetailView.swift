@@ -135,7 +135,12 @@ struct GoalDetailView: View {
                 EditButton()
             }
             ToolbarItem(placement: .primaryAction) {
-                Button("Edit") { showingEdit = true }
+                Button {
+                    showingEdit = true
+                } label: {
+                    Image(systemName: "square.and.pencil")
+                }
+                .accessibilityLabel("Edit Goal Details")
             }
         }
         .sheet(isPresented: $showingEdit) {
